@@ -3,157 +3,180 @@
 //             audio waveform visualization
 // ──────────────────────────────────────────────
 
-import { EventEmitter } from './utils.js';
+import { EventEmitter, getApiKeys } from './utils.js';
 
 /**
- * Wraps the Web Speech API (`SpeechRecognition`) for continuous, real-time
- * speech-to-text.  Emits interim and final transcript events and
- * auto-restarts when Chrome's ~60 s timeout fires.
- *
- * Events:
- *   'interim'      → (text: string)
- *   'final'        → (text: string)
- *   'stateChange'  → (state: 'idle' | 'listening' | 'error')
- *   'error'        → (error: string)
+ * Gemini-powered STT engine. Captures audio via MediaRecorder in 3.5s chunks,
+ * sends them to the Gemini API, and emits 'final' text events.
  */
 export class SpeechEngine extends EventEmitter {
   constructor() {
     super();
-    this.recognition = null;
     this.state = 'idle';
-    this._shouldRestart = false;
-    this._restartTimer = null;
-    this._consecutiveNetworkErrors = 0;
+    this.mediaRecorder = null;
+    this.stream = null;
+    this.chunkTimer = null;
+    this.apiKey = '';
+    this.model = 'gemini-3.5-flash';
+    this.hasVoiceActivity = false;
   }
 
-  /** Feature-detect the Web Speech API. */
   static isSupported() {
-    return 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
+    return !!window.MediaRecorder;
   }
 
-  /**
-   * Begin listening.
-   * @param {string} lang  BCP-47 language tag (default `en-US`).
-   */
-  start(lang = 'en-US') {
-    // Prevent double-start
+  async start() {
     if (this.state === 'listening') return;
 
-    const SpeechRecognition =
-      window.SpeechRecognition || window.webkitSpeechRecognition;
+    const keys = getApiKeys();
+    if (!keys.gemini) {
+      this.emit('error', 'Gemini API Key is required for speech recognition.');
+      return;
+    }
+    this.apiKey = keys.gemini;
+    if (keys.model) this.model = keys.model;
 
-    if (!SpeechRecognition) {
-      this.emit('error', 'Speech recognition is not supported in this browser.');
-      this._setState('error');
+    try {
+      this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (err) {
+      this.emit('error', `Microphone access denied: ${err.message}`);
       return;
     }
 
-    this._shouldRestart = true;
+    this._setState('listening');
+    this._recordNextChunk();
+  }
 
-    const recognition = new SpeechRecognition();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = lang;
-    recognition.maxAlternatives = 1;
+  _recordNextChunk() {
+    if (this.state !== 'listening') return;
 
-    // ── Result handler ──────────────────────────
-    recognition.onresult = (event) => {
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const result = event.results[i];
-        const text = result[0].transcript;
+    this.mediaRecorder = new MediaRecorder(this.stream, { mimeType: 'audio/webm' });
+    this.chunks = [];
+    this.hasVoiceActivity = false;
 
-        if (result.isFinal) {
+    this.mediaRecorder.ondataavailable = (e) => {
+      if (e.data.size > 0) this.chunks.push(e.data);
+    };
+
+    this.mediaRecorder.onstop = async () => {
+      if (this.chunks.length > 0 && this.hasVoiceActivity) {
+        const blob = new Blob(this.chunks, { type: 'audio/webm' });
+        // Emit an interim loading state so the UI knows it's processing
+        this.emit('interim', '...'); 
+        
+        const text = await this._transcribeChunk(blob);
+        if (text && text.length > 0) {
+          // Clear interim and emit final
+          this.emit('interim', '');
           this.emit('final', text);
         } else {
-          this.emit('interim', text);
+          this.emit('interim', '');
         }
+      } else if (this.chunks.length > 0 && !this.hasVoiceActivity) {
+        // Skip API call to save rate limit
+        this.emit('interim', '');
+      }
+
+      if (this.state === 'listening') {
+        this._recordNextChunk();
       }
     };
 
-    // ── Start handler ───────────────────────────
-    recognition.onstart = () => {
-      this._consecutiveNetworkErrors = 0;
-      this._setState('listening');
-    };
+    this.mediaRecorder.start();
 
-    // ── End handler (auto-restart) ──────────────
-    recognition.onend = () => {
-      if (this._shouldRestart) {
-        // If we encountered a network error, back off (e.g. wait 2.5 seconds)
-        const delay = this._consecutiveNetworkErrors > 0 ? 2500 : 300;
-        this._restartTimer = setTimeout(() => {
-          this._restartTimer = null;
-          if (this._shouldRestart) {
-            try {
-              recognition.start();
-            } catch {
-              // Already started – swallow
+    // Prevent massive memory buildup by forcing a flush every 15s.
+    // If no voice was detected, it drops silently without hitting the API.
+    this.chunkTimer = setTimeout(() => {
+      this.flushAndTranscribe();
+    }, 15000);
+  }
+
+  flushAndTranscribe() {
+    clearTimeout(this.chunkTimer);
+    if (this.mediaRecorder && this.mediaRecorder.state === 'recording') {
+      this.mediaRecorder.stop();
+    }
+  }
+
+  async _transcribeChunk(blob) {
+    try {
+      const base64Audio = await this._blobToBase64(blob);
+      const payload = {
+        contents: [{
+          parts: [
+            { text: "Transcribe the following audio accurately. Output ONLY the transcript. Do not output anything if there is no speech or it's just noise." },
+            {
+              inlineData: {
+                mimeType: "audio/webm",
+                data: base64Audio.split(',')[1]
+              }
             }
-          }
-        }, delay);
-      } else {
-        this._setState('idle');
-      }
-    };
-
-    // ── Error handler ───────────────────────────
-    recognition.onerror = (event) => {
-      // 'no-speech' and 'aborted' are non-fatal – just let auto-restart handle them.
-      const nonFatal = new Set(['no-speech', 'aborted']);
-
-      if (event.error === 'network') {
-        this._consecutiveNetworkErrors++;
-        if (this._consecutiveNetworkErrors <= 3) {
-          this.emit('warning', `Network glitch detected. Retrying speech connection (attempt ${this._consecutiveNetworkErrors}/3)...`);
-          return; // Let the onend handler auto-restart
+          ]
+        }],
+        generationConfig: {
+          temperature: 0.1,
         }
+      };
+
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${this.apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const errJson = await response.json().catch(() => ({}));
+        throw new Error(`${response.status} - ${errJson.error?.message || 'Unknown API Error'}`);
       }
-
-      if (!nonFatal.has(event.error)) {
-        this.emit('error', `Speech recognition error: ${event.error}`);
-        this._setState('error');
-        // Stop attempting to restart on fatal errors
-        this._shouldRestart = false;
-      }
-    };
-
-    this.recognition = recognition;
-
-    try {
-      recognition.start();
+      
+      const data = await response.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
+      
+      // Filter out common hallucinations Gemini produces for silence
+      const lower = text.toLowerCase();
+      console.log('Raw STT transcript:', text);
+      if (lower.includes('no audio') || lower.includes('no speech') || lower.match(/^\[(.*)\]$/)) return null;
+      
+      return text;
     } catch (err) {
-      this.emit('error', `Could not start recognition: ${err.message}`);
-      this._setState('error');
+      console.error('STT Error:', err);
+      this.emit('error', `Speech Transcription Failed: ${err.message}`);
+      return null;
     }
   }
 
-  /** Stop listening and tear down. */
+  _blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+
   stop() {
-    this._shouldRestart = false;
-    this._consecutiveNetworkErrors = 0;
-    clearTimeout(this._restartTimer);
-    this._restartTimer = null;
-
-    try {
-      this.recognition?.stop();
-    } catch {
-      // Already stopped – ignore
-    }
-
-    this.recognition = null;
     this._setState('idle');
+    clearTimeout(this.chunkTimer);
+    
+    if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+      this.mediaRecorder.onstop = null; // Prevent loop
+      this.mediaRecorder.stop();
+    }
+    
+    this.stream?.getTracks().forEach(t => t.stop());
+    
+    this.mediaRecorder = null;
+    this.stream = null;
   }
 
-  /** Convenience toggle. */
-  toggle(lang) {
+  toggle() {
     if (this.state === 'listening') {
       this.stop();
     } else {
-      this.start(lang);
+      this.start();
     }
   }
 
-  /** @private */
   _setState(state) {
     if (this.state !== state) {
       this.state = state;

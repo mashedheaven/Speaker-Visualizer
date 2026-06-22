@@ -22,7 +22,13 @@
   height: 100vh;
   width: 100vw;
   overflow: hidden;
-  background-color: var(--bg-primary);
+  background: linear-gradient(-90deg, rgba(30, 20, 80, 0.98), rgba(20, 50, 100, 0.98), rgba(70, 20, 100, 0.98), rgba(30, 20, 80, 0.98));
+  background-size: 300% 100%;
+  animation: waterRippleLeft 20s linear infinite;
+  animation-play-state: paused;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(50px);
+  -webkit-backdrop-filter: blur(50px);
 }
 
 
@@ -37,11 +43,21 @@
   align-items: center;
   justify-content: space-between;
   padding: 0 var(--space-5);
+  padding-left: 80px; /* Space for macOS traffic lights */
   background-color: var(--bg-secondary);
   border-bottom: 1px solid var(--glass-border);
   z-index: var(--z-header);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+  -webkit-app-region: drag;
+}
+
+/* Ensure buttons in the header are clickable */
+.header button, 
+.header input, 
+.header select,
+.header a {
+  -webkit-app-region: no-drag;
 }
 
 .header__logo {
@@ -59,12 +75,12 @@
 }
 
 .header__title {
-  font-size: var(--text-xl);
-  font-weight: var(--weight-bold);
-  background: var(--accent-gradient);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-medium);
+  color: #ffffff;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  text-shadow: 0 0 12px rgba(255, 255, 255, 0.4);
   white-space: nowrap;
 }
 
@@ -108,7 +124,8 @@
 }
 
 .sidebar__item {
-  padding: var(--space-2) var(--space-3);
+  position: relative;
+  padding: var(--space-2) var(--space-3) var(--space-2) var(--space-5);
   border-radius: var(--radius-md);
   color: var(--text-secondary);
   cursor: pointer;
@@ -119,8 +136,20 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  border-left: 2px solid transparent;
   user-select: none;
+}
+
+.sidebar__item::before {
+  content: '';
+  position: absolute;
+  left: var(--space-2);
+  top: 50%;
+  transform: translateY(-50%) scale(0);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-cyan);
+  transition: transform var(--duration-normal) var(--ease-spring);
 }
 
 .sidebar__item:hover {
@@ -130,8 +159,12 @@
 
 .sidebar__item--active {
   background-color: var(--glass-bg);
-  color: var(--accent-cyan);
-  border-left-color: var(--accent-cyan);
+  color: #ffffff;
+}
+
+.sidebar__item--active::before {
+  transform: translateY(-50%) scale(1);
+  box-shadow: 0 0 10px var(--accent-cyan);
 }
 
 .sidebar__item-icon {

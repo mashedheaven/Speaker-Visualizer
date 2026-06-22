@@ -7,8 +7,10 @@ export class SettingsPanel {
   }
   
   _init() {
-    // Close button
-    this.dialog?.querySelector('.settings__close')?.addEventListener('click', () => this.close());
+    // Close buttons (both X icon and Cancel button)
+    this.dialog?.querySelectorAll('.settings__close').forEach(btn => {
+      btn.addEventListener('click', () => this.close());
+    });
     
     // Save button
     this.dialog?.querySelector('.settings__save')?.addEventListener('click', () => this.save());
@@ -63,7 +65,7 @@ export class SettingsPanel {
     const gemini = this.dialog?.querySelector('#gemini-key')?.value?.trim() || '';
     const openweather = this.dialog?.querySelector('#weather-key')?.value?.trim() || '';
     const unsplash = this.dialog?.querySelector('#unsplash-key')?.value?.trim() || '';
-    const model = this.dialog?.querySelector('#gemini-model')?.value || 'gemini-2.0-flash';
+    const model = this.dialog?.querySelector('#gemini-model')?.value || 'gemini-3.5-flash';
     
     setApiKeys({ gemini, openweather, unsplash, model });
     
@@ -82,7 +84,7 @@ export class SettingsPanel {
     if (geminiInput) geminiInput.value = keys.gemini || '';
     if (weatherInput) weatherInput.value = keys.openweather || '';
     if (unsplashInput) unsplashInput.value = keys.unsplash || '';
-    if (modelSelect) modelSelect.value = keys.model || 'gemini-2.0-flash';
+    if (modelSelect) modelSelect.value = keys.model || 'gemini-3.5-flash';
     
     this.dialog?.showModal();
   }
@@ -91,7 +93,7 @@ export class SettingsPanel {
     const gemini = this.dialog?.querySelector('#gemini-key')?.value?.trim() || '';
     const openweather = this.dialog?.querySelector('#weather-key')?.value?.trim() || '';
     const unsplash = this.dialog?.querySelector('#unsplash-key')?.value?.trim() || '';
-    const model = this.dialog?.querySelector('#gemini-model')?.value || 'gemini-2.0-flash';
+    const model = this.dialog?.querySelector('#gemini-model')?.value || 'gemini-3.5-flash';
     
     setApiKeys({ gemini, openweather, unsplash, model });
     this.close();

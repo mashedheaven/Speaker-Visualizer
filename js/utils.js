@@ -145,20 +145,27 @@ export function escapeHtml(str) {
 }
 
 /**
- * Retrieve stored API keys from localStorage.
+ * Retrieve stored API keys from localStorage or Electron file system.
  */
 export function getApiKeys() {
   try {
-    return JSON.parse(localStorage.getItem('speaker-viz-keys') || '{}');
+    if (window.electronAPI && window.electronAPI.loadSettings) {
+      const keys = window.electronAPI.loadSettings();
+      if (keys) return keys;
+    }
+    return JSON.parse(localStorage.getItem('speaker-viz-keys') || '{}') || {};
   } catch {
     return {};
   }
 }
 
 /**
- * Persist API keys to localStorage.
+ * Persist API keys to localStorage and Electron file system.
  */
 export function setApiKeys(keys) {
+  if (window.electronAPI && window.electronAPI.saveSettings) {
+    window.electronAPI.saveSettings(keys);
+  }
   localStorage.setItem('speaker-viz-keys', JSON.stringify(keys));
 }
 

@@ -107,7 +107,20 @@ class App {
         e.preventDefault();
         this._toggleListening();
       }
+      
+      // Cmd+Shift+V (or Ctrl+Shift+V) local shortcut
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.code === 'KeyV') {
+        e.preventDefault();
+        this._toggleListening();
+      }
     });
+
+    // Electron IPC shortcut toggle
+    if (window.electronAPI) {
+      window.electronAPI.onToggleListen(() => {
+        this._toggleListening();
+      });
+    }
   }
   
   async _toggleListening() {
@@ -128,6 +141,17 @@ class App {
         return;
       }
       
+      // Explicitly trigger the microphone permission prompt
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        // We just need the permission, stop the tracks immediately so SpeechEngine can take over
+        stream.getTracks().forEach(track => track.stop());
+      } catch (err) {
+        console.error('Microphone access denied:', err);
+        this._showNotification('Microphone permission denied. Please allow it in macOS System Settings.', 'error');
+        return;
+      }
+      
       this.speech.start();
       await this.audioAnalyzer.start();
       this._startWaveform();
@@ -135,8 +159,34 @@ class App {
   }
   
   _startWaveform() {
+    let silenceTimer = null;
+    const container = document.querySelector('.app-container');
+    
     const render = () => {
       this.audioAnalyzer.renderWaveform(this.waveformCanvas);
+      
+      // Control background animation based on voice activity
+      const data = this.audioAnalyzer.getFrequencyData();
+      if (data && container) {
+        let sum = 0;
+        for (let i = 0; i < data.length; i++) sum += data[i];
+        const avg = sum / data.length;
+        
+        if (avg > 8) { // 8/255 threshold for speech vs silence
+          this.speech.hasVoiceActivity = true;
+          container.style.animationPlayState = 'running';
+          clearTimeout(silenceTimer);
+          silenceTimer = setTimeout(() => {
+            if (container) container.style.animationPlayState = 'paused';
+            
+            // Silence detected: user finished their sentence, flush it immediately!
+            if (this.speech && this.speech.state === 'listening') {
+              this.speech.flushAndTranscribe();
+            }
+          }, 1200); // 1.2s of silence signals the end of an utterance
+        }
+      }
+      
       this._waveformAnimId = requestAnimationFrame(render);
     };
     render();
@@ -150,6 +200,10 @@ class App {
     // Clear canvas
     const ctx = this.waveformCanvas?.getContext('2d');
     if (ctx) ctx.clearRect(0, 0, this.waveformCanvas.width, this.waveformCanvas.height);
+    
+    // Ensure animation stops
+    const container = document.querySelector('.app-container');
+    if (container) container.style.animationPlayState = 'paused';
   }
   
   _updateTranscript(text, isInterim) {

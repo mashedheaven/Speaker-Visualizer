@@ -93,7 +93,7 @@ export class IntentDetector extends EventEmitter {
    * @param {string} model   Gemini model.
    * @returns {Promise<Array<{type: string, query: string, params: object}>>}
    */
-  async _callGemini(text, apiKey, model = 'gemini-2.0-flash') {
+  async _callGemini(text, apiKey, model = 'gemini-3.5-flash') {
     const contextStr =
       this._tileContext.length > 0
         ? `\nCurrently visible tiles: ${JSON.stringify(this._tileContext)}`
