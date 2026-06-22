@@ -1,6 +1,27 @@
 # Dependencies
 node_modules/
 
+# Build and packaged app output
+dist/
+build/
+out/
+Release/
+release/
+releases/
+*.asar
+*.asar.unpacked/
+
+# Test and coverage output
+coverage/
+.nyc_output/
+
+# Caches
+.cache/
+.parcel-cache/
+.vite/
+.eslintcache
+*.tsbuildinfo
+
 # OS generated files
 .DS_Store
 .DS_Store?
@@ -10,25 +31,23 @@ node_modules/
 ehthumbs.db
 Thumbs.db
 
-# Electron builds
-dist/
-build/
-out/
-Release/
-
 # Logs
-logs
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
 
 # Environment
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*
+!.env.example
+
+# Temporary files
+tmp/
+temp/
+.tmp/
 
 # Editor directories and files
 .idea
