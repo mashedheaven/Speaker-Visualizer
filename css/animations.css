@@ -1,0 +1,235 @@
+/* ==========================================================================
+   Speaker Visualizer — Animations & Motion (animations.css)
+   --------------------------------------------------------------------------
+   Keyframes, utility animation classes, transition helpers, and reduced-
+   motion overrides. All durations reference tokens from variables.css.
+   ========================================================================== */
+
+
+/* =======================================================================
+   SECTION 1: KEYFRAMES
+   ======================================================================= */
+
+/* --- Entrance Animations ------------------------------------------------ */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(10px); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+
+/* --- Continuous / Looping Animations ------------------------------------ */
+
+@keyframes pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(0, 212, 255, 0.4); }
+  70%  { box-shadow: 0 0 0 10px rgba(0, 212, 255, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(0, 212, 255, 0); }
+}
+
+@keyframes mic-ring {
+  0%   { transform: scale(1);   opacity: 0.3; }
+  100% { transform: scale(1.4); opacity: 0; }
+}
+
+@keyframes shimmer {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@keyframes waveBar {
+  0%, 100% { transform: scaleY(0.3); }
+  50%      { transform: scaleY(1); }
+}
+
+@keyframes tileGlow {
+  0%   { box-shadow: 0 0 0 rgba(255, 255, 255, 0); }
+  50%  { box-shadow: 0 0 30px rgba(255, 255, 255, 0.05); }
+  100% { box-shadow: 0 0 0 rgba(255, 255, 255, 0); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+
+@keyframes gradientShift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+
+/* =======================================================================
+   SECTION 2: UTILITY ANIMATION CLASSES
+   ======================================================================= */
+
+.animate-fade-in {
+  animation: fadeIn var(--duration-normal) var(--ease-out) forwards;
+}
+
+.animate-slide-up {
+  animation: slideUp var(--duration-enter) var(--ease-out) forwards;
+}
+
+.animate-slide-down {
+  animation: slideDown var(--duration-normal) var(--ease-out) forwards;
+}
+
+.animate-scale-in {
+  animation: scaleIn var(--duration-normal) var(--ease-out) forwards;
+}
+
+.animate-tile-enter {
+  animation:
+    slideUp var(--duration-enter) var(--ease-spring) forwards,
+    tileGlow 1s var(--ease-out) 0.2s forwards;
+}
+
+.animate-tile-exit {
+  animation: fadeOut var(--duration-normal) var(--ease-in-out) forwards;
+}
+
+.animate-float {
+  animation: float 3s var(--ease-in-out) infinite;
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradientShift 4s var(--ease-in-out) infinite;
+}
+
+
+/* =======================================================================
+   SECTION 3: WAVEFORM BAR ANIMATIONS
+   ======================================================================= */
+
+.waveform-bar {
+  display: inline-block;
+  width: 3px;
+  background: var(--accent-cyan);
+  border-radius: var(--radius-full);
+  transform-origin: bottom;
+  animation: waveBar 1.2s var(--ease-in-out) infinite;
+}
+
+.waveform-bar:nth-child(1) { animation-delay: 0s;    height: 20px; }
+.waveform-bar:nth-child(2) { animation-delay: 0.1s;  height: 28px; }
+.waveform-bar:nth-child(3) { animation-delay: 0.2s;  height: 16px; }
+.waveform-bar:nth-child(4) { animation-delay: 0.15s; height: 32px; }
+.waveform-bar:nth-child(5) { animation-delay: 0.25s; height: 22px; }
+.waveform-bar:nth-child(6) { animation-delay: 0.05s; height: 26px; }
+.waveform-bar:nth-child(7) { animation-delay: 0.3s;  height: 18px; }
+
+
+/* =======================================================================
+   SECTION 4: STAGGERED ANIMATION DELAYS
+   ======================================================================= */
+
+/* Apply to child tiles for cascading entrance animations */
+.stagger-1  { animation-delay: 0.05s; }
+.stagger-2  { animation-delay: 0.10s; }
+.stagger-3  { animation-delay: 0.15s; }
+.stagger-4  { animation-delay: 0.20s; }
+.stagger-5  { animation-delay: 0.25s; }
+.stagger-6  { animation-delay: 0.30s; }
+.stagger-7  { animation-delay: 0.35s; }
+.stagger-8  { animation-delay: 0.40s; }
+.stagger-9  { animation-delay: 0.45s; }
+.stagger-10 { animation-delay: 0.50s; }
+
+
+/* =======================================================================
+   SECTION 5: TRANSITION UTILITIES
+   ======================================================================= */
+
+.transition-colors {
+  transition:
+    color var(--duration-fast) var(--ease-out),
+    background-color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out);
+}
+
+.transition-transform {
+  transition: transform var(--duration-normal) var(--ease-out);
+}
+
+.transition-all {
+  transition: all var(--duration-normal) var(--ease-out);
+}
+
+.transition-opacity {
+  transition: opacity var(--duration-normal) var(--ease-out);
+}
+
+
+/* =======================================================================
+   SECTION 6: REDUCED MOTION — Accessibility
+   -----------------------------------------------------------------------
+   Rather than globally nuking all animations (which can break layouts
+   that depend on animation-fill-mode), we explicitly target our own
+   decorative animation classes and reset them safely.
+   ======================================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  /* Disable entrance & decorative animations */
+  .animate-fade-in,
+  .animate-slide-up,
+  .animate-slide-down,
+  .animate-scale-in,
+  .animate-tile-enter,
+  .animate-tile-exit,
+  .animate-float,
+  .animate-gradient {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  /* Disable mic button pulse & ring */
+  .mic-btn--active {
+    animation: none;
+  }
+
+  .mic-btn--active::before {
+    animation: none;
+  }
+
+  /* Disable skeleton shimmer */
+  .skeleton::after {
+    animation: none;
+  }
+
+  /* Disable waveform bar animations */
+  .waveform-bar {
+    animation: none;
+    transform: scaleY(0.5);
+  }
+
+  /* Reduce transition durations to near-instant */
+  .transition-colors,
+  .transition-transform,
+  .transition-all,
+  .transition-opacity {
+    transition-duration: 0.01ms;
+  }
+}

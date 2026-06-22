@@ -1,0 +1,731 @@
+/* ==========================================================================
+   Speaker Visualizer — Component Library (components.css)
+   --------------------------------------------------------------------------
+   All reusable UI components: tiles, buttons, dialogs, status indicators,
+   and content-specific tile variants (weather, place, fact, brainstorm).
+   Depends on variables.css for design tokens.
+   ========================================================================== */
+
+
+/* =======================================================================
+   SECTION 1: TILES — Core Card System
+   ======================================================================= */
+
+/* -----------------------------------------------------------------------
+   1a. Base Tile
+   ----------------------------------------------------------------------- */
+
+.tile {
+  position: relative;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 200px;
+  transition:
+    transform var(--duration-normal) var(--ease-out),
+    opacity var(--duration-normal) var(--ease-out),
+    box-shadow var(--duration-normal) var(--ease-out);
+}
+
+.tile:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+
+/* -----------------------------------------------------------------------
+   1b. Tile Type Variants
+   ----------------------------------------------------------------------- */
+
+.tile--weather {
+  border-color: rgba(0, 212, 255, 0.15);
+  background: var(--tile-weather-bg);
+}
+
+.tile--weather:hover {
+  box-shadow: var(--tile-weather-glow), var(--shadow-lg);
+}
+
+.tile--place {
+  border-color: rgba(168, 85, 247, 0.15);
+  background: var(--tile-place-bg);
+}
+
+.tile--place:hover {
+  box-shadow: var(--tile-place-glow), var(--shadow-lg);
+}
+
+.tile--fact {
+  border-color: rgba(52, 211, 153, 0.15);
+  background: var(--tile-fact-bg);
+}
+
+.tile--fact:hover {
+  box-shadow: var(--tile-fact-glow), var(--shadow-lg);
+}
+
+.tile--brainstorm {
+  border-color: rgba(251, 191, 36, 0.15);
+  background: var(--tile-brainstorm-bg);
+}
+
+.tile--brainstorm:hover {
+  box-shadow: var(--tile-brainstorm-glow), var(--shadow-lg);
+}
+
+
+/* -----------------------------------------------------------------------
+   1c. Expanded Tile State
+   ----------------------------------------------------------------------- */
+
+.tile--expanded {
+  position: fixed;
+  inset: var(--space-7);
+  z-index: var(--z-modal);
+  max-height: none;
+  min-height: auto;
+  transform: none;
+}
+
+.tile--expanded:hover {
+  transform: none;
+}
+
+
+/* -----------------------------------------------------------------------
+   1d. Tile Internal Sections
+   ----------------------------------------------------------------------- */
+
+.tile__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--glass-border);
+  flex-shrink: 0;
+}
+
+.tile__type-indicator {
+  width: 3px;
+  height: 24px;
+  border-radius: var(--radius-full);
+  margin-right: var(--space-3);
+  flex-shrink: 0;
+}
+
+/* Type indicator colors */
+.tile--weather .tile__type-indicator { background-color: var(--accent-cyan); }
+.tile--place   .tile__type-indicator { background-color: var(--accent-purple); }
+.tile--fact    .tile__type-indicator { background-color: var(--accent-emerald); }
+.tile--brainstorm .tile__type-indicator { background-color: var(--accent-amber); }
+
+.tile__title {
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tile__actions {
+  display: flex;
+  gap: var(--space-1);
+  flex-shrink: 0;
+  margin-left: var(--space-2);
+}
+
+.tile__action-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+  font-size: 14px;
+}
+
+.tile__action-btn:hover {
+  background-color: var(--glass-bg-hover);
+  color: var(--text-primary);
+}
+
+.tile__action-btn--pinned {
+  color: var(--accent-amber);
+}
+
+.tile__body {
+  flex: 1;
+  padding: var(--space-4);
+  overflow-y: auto;
+}
+
+.tile__footer {
+  padding: var(--space-2) var(--space-4);
+  border-top: 1px solid var(--glass-border);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+
+/* =======================================================================
+   SECTION 2: WEATHER TILE
+   ======================================================================= */
+
+.weather__main {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.weather__temp {
+  font-size: var(--text-3xl);
+  font-weight: var(--weight-bold);
+  color: var(--accent-cyan);
+  line-height: 1;
+}
+
+.weather__icon {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.weather__details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.weather__condition {
+  font-size: var(--text-lg);
+  color: var(--text-primary);
+}
+
+.weather__location {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.weather__forecast {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--glass-border);
+}
+
+.weather__forecast-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.weather__forecast-day-temp {
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+
+
+/* =======================================================================
+   SECTION 3: PLACE TILE
+   ======================================================================= */
+
+.place__image {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-3);
+}
+
+.place__summary {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: var(--leading-relaxed);
+}
+
+.place__facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.place__fact-chip {
+  padding: var(--space-1) var(--space-3);
+  background: rgba(168, 85, 247, 0.1);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  color: var(--accent-purple);
+  white-space: nowrap;
+}
+
+
+/* =======================================================================
+   SECTION 4: FACT TILE
+   ======================================================================= */
+
+.fact__content {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: var(--leading-relaxed);
+}
+
+.fact__content h3 {
+  font-size: var(--text-base);
+  color: var(--text-primary);
+  margin-top: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.fact__content h3:first-child {
+  margin-top: 0;
+}
+
+.fact__content ul {
+  padding-left: var(--space-5);
+  list-style-type: disc;
+}
+
+.fact__content li {
+  margin-bottom: var(--space-1);
+}
+
+.fact__content li::marker {
+  color: var(--accent-emerald);
+}
+
+.fact__content code {
+  font-family: var(--font-mono);
+  background: var(--bg-tertiary);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  color: var(--accent-emerald);
+}
+
+.fact__content a {
+  color: var(--accent-emerald);
+  text-decoration: underline;
+  text-decoration-color: rgba(52, 211, 153, 0.3);
+  text-underline-offset: 2px;
+}
+
+.fact__content a:hover {
+  text-decoration-color: var(--accent-emerald);
+}
+
+
+/* =======================================================================
+   SECTION 5: BRAINSTORM TILE
+   ======================================================================= */
+
+.brainstorm__ideas {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--space-3);
+}
+
+.brainstorm__idea {
+  padding: var(--space-3);
+  background: rgba(251, 191, 36, 0.08);
+  border: 1px solid rgba(251, 191, 36, 0.15);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.brainstorm__idea:hover {
+  transform: translateY(-1px);
+}
+
+.brainstorm__idea-number {
+  font-size: var(--text-xs);
+  color: var(--accent-amber);
+  font-weight: var(--weight-semibold);
+  margin-bottom: var(--space-1);
+}
+
+
+/* =======================================================================
+   SECTION 6: LOADING / SKELETON STATES
+   ======================================================================= */
+
+.tile--loading .tile__body {
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton {
+  height: 16px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton + .skeleton {
+  margin-top: var(--space-2);
+}
+
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.05),
+    transparent
+  );
+  animation: shimmer 1.5s infinite;
+}
+
+.skeleton--wide  { width: 80%; }
+.skeleton--narrow { width: 50%; }
+
+.skeleton--circle {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+}
+
+
+/* =======================================================================
+   SECTION 7: MIC BUTTON
+   ======================================================================= */
+
+.mic-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-full);
+  background: transparent;
+  border: 2px solid var(--text-muted);
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--duration-normal) var(--ease-out);
+  position: relative;
+  flex-shrink: 0;
+}
+
+.mic-btn:hover {
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+}
+
+.mic-btn--active {
+  background: rgba(0, 212, 255, 0.15);
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+  animation: pulse 2s infinite;
+}
+
+.mic-btn--active::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: var(--radius-full);
+  border: 2px solid var(--accent-cyan);
+  opacity: 0.3;
+  animation: mic-ring 2s infinite;
+  pointer-events: none;
+}
+
+.mic-btn__icon {
+  width: 20px;
+  height: 20px;
+}
+
+
+/* =======================================================================
+   SECTION 8: SETTINGS DIALOG
+   ======================================================================= */
+
+.settings-dialog {
+  padding: 0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  color: var(--text-primary);
+  max-width: 520px;
+  width: 90vw;
+  box-shadow: var(--shadow-lg);
+}
+
+.settings-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.settings__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.settings__title {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+}
+
+.settings__close-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+}
+
+.settings__close-btn:hover {
+  background-color: var(--glass-bg-hover);
+  color: var(--text-primary);
+}
+
+.settings__body {
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.settings__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.settings__label {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+}
+
+.settings__input {
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-family: var(--font-family);
+  transition: border-color var(--duration-fast) var(--ease-out);
+  width: 100%;
+}
+
+.settings__input:focus {
+  border-color: var(--accent-cyan);
+  outline: none;
+}
+
+.settings__input::placeholder {
+  color: var(--text-faint);
+}
+
+.settings__input-wrapper {
+  position: relative;
+  display: flex;
+}
+
+.settings__input-wrapper .settings__input {
+  padding-right: var(--space-8);
+}
+
+.settings__toggle-visibility {
+  position: absolute;
+  right: var(--space-2);
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+}
+
+.settings__toggle-visibility:hover {
+  background-color: var(--glass-bg-hover);
+  color: var(--text-primary);
+}
+
+.settings__footer {
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--glass-border);
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+.settings__hint {
+  font-size: var(--text-xs);
+  color: var(--text-faint);
+  margin-top: calc(-1 * var(--space-1));
+}
+
+.settings__clear-key {
+  color: var(--text-muted);
+  transition: color var(--duration-fast) var(--ease-out), background-color var(--duration-fast) var(--ease-out);
+}
+
+.settings__clear-key:hover {
+  background: rgba(239, 68, 68, 0.15) !important;
+  color: #ef4444 !important;
+}
+
+
+/* =======================================================================
+   SECTION 9: BUTTONS
+   ======================================================================= */
+
+.btn {
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  border: none;
+  font-family: var(--font-family);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.btn--primary {
+  background: var(--accent-gradient);
+  color: #ffffff;
+}
+
+.btn--primary:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.btn--primary:active {
+  transform: translateY(0);
+}
+
+.btn--secondary {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--glass-border);
+}
+
+.btn--secondary:hover {
+  background: var(--bg-elevated);
+}
+
+.btn--ghost {
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.btn--ghost:hover {
+  background: var(--glass-bg-hover);
+  color: var(--text-primary);
+}
+
+.btn--danger {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.btn--danger:hover {
+  background: rgba(239, 68, 68, 0.25);
+}
+
+.btn--sm {
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-xs);
+}
+
+.btn__icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+
+/* =======================================================================
+   SECTION 10: STATUS INDICATORS
+   ======================================================================= */
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.status-dot--active {
+  background-color: var(--accent-emerald);
+  box-shadow: 0 0 8px var(--accent-emerald-dim);
+}
+
+.status-dot--inactive {
+  background-color: var(--text-muted);
+}
+
+.status-dot--error {
+  background-color: #ef4444;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
+}
+
+
+/* =======================================================================
+   SECTION 11: TILE OVERLAY (for expanded tiles)
+   ======================================================================= */
+
+.tile-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: calc(var(--z-modal) - 1);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--duration-normal) var(--ease-out);
+}
+
+.tile-overlay--visible {
+  opacity: 1;
+  pointer-events: auto;
+}

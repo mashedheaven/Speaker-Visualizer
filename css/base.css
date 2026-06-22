@@ -1,0 +1,251 @@
+/* ==========================================================================
+   Speaker Visualizer — Base Reset & Defaults (base.css)
+   --------------------------------------------------------------------------
+   Modern CSS reset, global typography, scrollbar styling, selection colors,
+   and sensible defaults. Depends on variables.css for all design tokens.
+   ========================================================================== */
+
+
+/* -----------------------------------------------------------------------
+   1. BOX MODEL RESET
+   ----------------------------------------------------------------------- */
+
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+
+/* -----------------------------------------------------------------------
+   2. ROOT & DOCUMENT
+   ----------------------------------------------------------------------- */
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  tab-size: 4;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-family);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  min-height: 100vh;
+  overflow: hidden;  /* App container handles scrolling */
+}
+
+
+/* -----------------------------------------------------------------------
+   3. TYPOGRAPHY DEFAULTS
+   ----------------------------------------------------------------------- */
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-tight);
+  color: var(--text-primary);
+}
+
+p {
+  line-height: var(--leading-normal);
+}
+
+a {
+  color: var(--accent-cyan);
+  text-decoration: none;
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+a:hover {
+  color: var(--accent-purple);
+}
+
+strong, b {
+  font-weight: var(--weight-semibold);
+}
+
+code, kbd, samp, pre {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
+
+/* -----------------------------------------------------------------------
+   4. MEDIA DEFAULTS
+   ----------------------------------------------------------------------- */
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+svg {
+  fill: currentColor;
+}
+
+canvas {
+  display: block;
+}
+
+
+/* -----------------------------------------------------------------------
+   5. FORM ELEMENT RESETS
+   ----------------------------------------------------------------------- */
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  background: none;
+  border: none;
+}
+
+fieldset {
+  border: none;
+}
+
+
+/* -----------------------------------------------------------------------
+   6. LIST RESET
+   ----------------------------------------------------------------------- */
+
+ul, ol {
+  list-style: none;
+}
+
+
+/* -----------------------------------------------------------------------
+   7. TABLE RESET
+   ----------------------------------------------------------------------- */
+
+table {
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+
+/* -----------------------------------------------------------------------
+   8. FOCUS STYLES
+   ----------------------------------------------------------------------- */
+
+:focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+
+/* -----------------------------------------------------------------------
+   9. SELECTION COLOR
+   ----------------------------------------------------------------------- */
+
+::selection {
+  background-color: rgba(0, 212, 255, 0.25);
+  color: var(--text-primary);
+}
+
+::-moz-selection {
+  background-color: rgba(0, 212, 255, 0.25);
+  color: var(--text-primary);
+}
+
+
+/* -----------------------------------------------------------------------
+   10. CUSTOM SCROLLBAR
+   ----------------------------------------------------------------------- */
+
+/* Webkit (Chrome, Edge, Safari) */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--text-faint);
+  border-radius: var(--radius-full);
+  transition: background var(--duration-fast) var(--ease-out);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--text-faint) var(--bg-tertiary);
+}
+
+
+/* -----------------------------------------------------------------------
+   11. DIALOG RESET
+   ----------------------------------------------------------------------- */
+
+dialog {
+  border: none;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+}
+
+dialog::backdrop {
+  background: transparent;
+}
+
+
+/* -----------------------------------------------------------------------
+   12. MISC
+   ----------------------------------------------------------------------- */
+
+[hidden] {
+  display: none !important;
+}
+
+hr {
+  border: none;
+  border-top: 1px solid var(--glass-border);
+  margin: var(--space-4) 0;
+}
+
+abbr[title] {
+  text-decoration: underline dotted;
+  cursor: help;
+}
+
+/* Remove iOS input shadow */
+input,
+textarea {
+  -webkit-appearance: none;
+  appearance: none;
+}
