@@ -42,33 +42,6 @@ export function debounce(fn, ms) {
 }
 
 /**
- * Throttle – ensures `fn` is called at most once every `ms` milliseconds.
- * Uses a leading-edge call + trailing-edge flush so the last invocation
- * is never lost.
- */
-export function throttle(fn, ms) {
-  let lastCall = 0;
-  let timer = null;
-  return function (...args) {
-    const now = Date.now();
-    const remaining = ms - (now - lastCall);
-
-    if (remaining <= 0) {
-      clearTimeout(timer);
-      timer = null;
-      lastCall = now;
-      fn.apply(this, args);
-    } else if (!timer) {
-      timer = setTimeout(() => {
-        lastCall = Date.now();
-        timer = null;
-        fn.apply(this, args);
-      }, remaining);
-    }
-  };
-}
-
-/**
  * Simple in-memory key → value cache with per-entry TTL.
  */
 export class Cache {
@@ -117,19 +90,6 @@ export function generateId() {
 }
 
 /**
- * Convert a temperature from Kelvin to Celsius or Fahrenheit.
- * @param {number} kelvin
- * @param {'C'|'F'} unit
- * @returns {string} Formatted temperature string with unit symbol.
- */
-export function formatTemp(kelvin, unit = 'C') {
-  if (unit === 'F') {
-    return `${((kelvin - 273.15) * 9 / 5 + 32).toFixed(1)}°F`;
-  }
-  return `${(kelvin - 273.15).toFixed(1)}°C`;
-}
-
-/**
  * Escape HTML special characters to prevent XSS when building
  * strings that will be placed into the DOM.
  */
@@ -144,27 +104,51 @@ export function escapeHtml(str) {
   return str.replace(/[&<>"']/g, ch => map[ch]);
 }
 
+// ──────────────────────────────────────────────
+// Settings Management (cached in memory)
+// ──────────────────────────────────────────────
+
 /**
- * Retrieve stored API keys from localStorage or Electron file system.
+ * In-memory settings cache. Loaded once at startup from Electron's
+ * file-based store (async), then kept in sync on every save.
+ * All reads are synchronous from cache — no IPC blocking.
  */
-export function getApiKeys() {
+let _settingsCache = {};
+
+/**
+ * Initialize settings from Electron's file store.
+ * Must be called once at app startup (awaited).
+ */
+export async function initSettings() {
   try {
     if (window.electronAPI && window.electronAPI.loadSettings) {
-      const keys = window.electronAPI.loadSettings();
-      if (keys) return keys;
+      const keys = await window.electronAPI.loadSettings();
+      if (keys) {
+        _settingsCache = keys;
+        return;
+      }
     }
-    return JSON.parse(localStorage.getItem('speaker-viz-keys') || '{}') || {};
+    // Fallback to localStorage
+    _settingsCache = JSON.parse(localStorage.getItem('speaker-viz-keys') || '{}') || {};
   } catch {
-    return {};
+    _settingsCache = {};
   }
 }
 
 /**
- * Persist API keys to localStorage and Electron file system.
+ * Retrieve stored API keys synchronously from the in-memory cache.
  */
-export function setApiKeys(keys) {
+export function getApiKeys() {
+  return { ..._settingsCache };
+}
+
+/**
+ * Persist API keys to Electron file system and update the cache.
+ */
+export async function setApiKeys(keys) {
+  _settingsCache = { ...keys };
   if (window.electronAPI && window.electronAPI.saveSettings) {
-    window.electronAPI.saveSettings(keys);
+    await window.electronAPI.saveSettings(keys);
   }
   localStorage.setItem('speaker-viz-keys', JSON.stringify(keys));
 }
@@ -181,6 +165,8 @@ export function setApiKeys(keys) {
  *   `inline code`
  *   ### Heading
  *   - Bullet item
+ *   1. Numbered list item
+ *   *italic text*
  *   Plain paragraphs (separated by blank lines)
  *
  * Uses only `document.createElement` / `document.createTextNode` – never
@@ -193,7 +179,8 @@ export function renderMarkdown(text) {
   const fragment = document.createDocumentFragment();
   const lines = text.split('\n');
 
-  let currentList = null; // <ul> being built (if inside a bullet run)
+  let currentList = null; // <ul> or <ol> being built
+  let listType = null;    // 'ul' or 'ol'
   let paragraphBuffer = []; // plain-text lines waiting to become a <p>
 
   const flushParagraph = () => {
@@ -208,6 +195,7 @@ export function renderMarkdown(text) {
     if (currentList) {
       fragment.appendChild(currentList);
       currentList = null;
+      listType = null;
     }
   };
 
@@ -233,13 +221,24 @@ export function renderMarkdown(text) {
       continue;
     }
 
-    // --- Bullet list (- item) ---
-    const bulletMatch = line.match(/^\s*-\s+(.+)$/);
+    // --- Bullet list (- item or * item) ---
+    const bulletMatch = line.match(/^\s*[-*]\s+(.+)$/);
     if (bulletMatch) {
       flushParagraph();
-      if (!currentList) currentList = document.createElement('ul');
+      if (listType !== 'ul') { flushList(); currentList = document.createElement('ul'); listType = 'ul'; }
       const li = document.createElement('li');
       _applyInlineFormatting(li, bulletMatch[1]);
+      currentList.appendChild(li);
+      continue;
+    }
+
+    // --- Numbered list (1. item) ---
+    const numberedMatch = line.match(/^\s*\d+\.\s+(.+)$/);
+    if (numberedMatch) {
+      flushParagraph();
+      if (listType !== 'ol') { flushList(); currentList = document.createElement('ol'); listType = 'ol'; }
+      const li = document.createElement('li');
+      _applyInlineFormatting(li, numberedMatch[1]);
       currentList.appendChild(li);
       continue;
     }
@@ -257,16 +256,15 @@ export function renderMarkdown(text) {
 }
 
 /**
- * Parse inline formatting (**bold**, `code`) and append child nodes to
- * the given `parent` element.  Uses a simple state-machine tokenizer
- * rather than innerHTML.
+ * Parse inline formatting (**bold**, `code`, *italic*) and append child
+ * nodes to the given `parent` element.
  *
  * @param {HTMLElement} parent
  * @param {string} text
  */
 function _applyInlineFormatting(parent, text) {
-  // Regex alternation to find bold or code spans
-  const inlineRe = /(\*\*(.+?)\*\*|`([^`]+?)`)/g;
+  // Regex alternation to find bold, code, or italic spans
+  const inlineRe = /(\*\*(.+?)\*\*|`([^`]+?)`|\*([^*]+?)\*)/g;
 
   let lastIndex = 0;
   let match;
@@ -287,6 +285,11 @@ function _applyInlineFormatting(parent, text) {
       const code = document.createElement('code');
       code.textContent = match[3];
       parent.appendChild(code);
+    } else if (match[4] !== undefined) {
+      // *italic*
+      const em = document.createElement('em');
+      em.textContent = match[4];
+      parent.appendChild(em);
     }
 
     lastIndex = inlineRe.lastIndex;
@@ -295,10 +298,5 @@ function _applyInlineFormatting(parent, text) {
   // Remaining text after the last match
   if (lastIndex < text.length) {
     parent.appendChild(document.createTextNode(text.slice(lastIndex)));
-  }
-
-  // Edge case: completely plain text (no matches at all)
-  if (lastIndex === 0 && text.length > 0) {
-    // Already appended above via the "remaining text" branch
   }
 }

@@ -2,21 +2,23 @@ const { app, BrowserWindow, globalShortcut, ipcMain, Tray, nativeImage, Menu, sy
 const path = require('path');
 const fs = require('fs');
 
-ipcMain.on('save-settings', (event, keys) => {
-    const p = path.join(app.getPath('userData'), 'settings.json');
-    fs.writeFileSync(p, JSON.stringify(keys));
-    event.returnValue = true;
+// ── Settings IPC (async handle pattern) ─────────────────────────
+const settingsPath = () => path.join(app.getPath('userData'), 'settings.json');
+
+ipcMain.handle('save-settings', (_event, keys) => {
+    fs.writeFileSync(settingsPath(), JSON.stringify(keys, null, 2));
+    return true;
 });
 
-ipcMain.on('load-settings', (event) => {
-    const p = path.join(app.getPath('userData'), 'settings.json');
+ipcMain.handle('load-settings', () => {
     try {
-        if (fs.existsSync(p)) {
-            event.returnValue = JSON.parse(fs.readFileSync(p, 'utf8'));
-            return;
+        if (fs.existsSync(settingsPath())) {
+            return JSON.parse(fs.readFileSync(settingsPath(), 'utf8'));
         }
-    } catch(e) {}
-    event.returnValue = null;
+    } catch (e) {
+        console.error('Failed to load settings:', e);
+    }
+    return null;
 });
 
 let mainWindow;
@@ -53,6 +55,14 @@ function createWindow() {
     
     mainWindow.loadFile('index.html');
 
+    // Hide to tray on close instead of quitting
+    mainWindow.on('close', (e) => {
+        if (!app.isQuiting) {
+            e.preventDefault();
+            mainWindow.hide();
+        }
+    });
+
     mainWindow.on('closed', () => {
         mainWindow = null;
     });
@@ -61,16 +71,27 @@ function createWindow() {
 function createTray() {
     const icon = nativeImage.createEmpty();
     tray = new Tray(icon);
-    tray.setTitle('🎙️ SV'); // Mic emoji + SV for Speaker Visualizer
+    tray.setTitle('🎙️ SV');
     tray.setToolTip('Speaker Visualizer');
     
     const contextMenu = Menu.buildFromTemplate([
-        { label: 'Toggle Visualizer (Cmd+Shift+V)', click: toggleWindow },
+        { label: 'Show Window', click: () => showWindow() },
+        { label: 'Toggle Mic (⌘⇧V)', click: () => toggleMicFromMain() },
         { type: 'separator' },
         { label: 'Quit', click: () => { app.isQuiting = true; app.quit(); } }
     ]);
     
     tray.setContextMenu(contextMenu);
+    
+    // Click tray icon to show/hide
+    tray.on('click', () => toggleWindow());
+}
+
+function showWindow() {
+    if (mainWindow) {
+        mainWindow.show();
+        mainWindow.focus();
+    }
 }
 
 function toggleWindow() {
@@ -78,14 +99,32 @@ function toggleWindow() {
         if (mainWindow.isVisible()) {
             mainWindow.hide();
         } else {
-            mainWindow.show();
-            mainWindow.focus();
+            showWindow();
         }
     }
 }
 
+function toggleMicFromMain() {
+    if (mainWindow && mainWindow.webContents) {
+        mainWindow.webContents.send('toggle-listen');
+    }
+}
+
+function registerGlobalShortcut() {
+    const ret = globalShortcut.register('CommandOrControl+Shift+V', () => {
+        toggleMicFromMain();
+        // Also show window if hidden
+        if (mainWindow && !mainWindow.isVisible()) {
+            showWindow();
+        }
+    });
+    if (!ret) {
+        console.warn('Global shortcut Cmd+Shift+V registration failed');
+    }
+}
+
 app.whenReady().then(async () => {
-    // Automatically allow microphone permission requests
+    // Auto-allow microphone permission requests from renderer
     session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
         if (permission === 'media') {
             callback(true);
@@ -101,13 +140,39 @@ app.whenReady().then(async () => {
         return false;
     });
 
+    // Set basic CSP
+    session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+        callback({
+            responseHeaders: {
+                ...details.responseHeaders,
+                'Content-Security-Policy': [
+                    "default-src 'self'; " +
+                    "script-src 'self'; " +
+                    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+                    "font-src 'self' https://fonts.gstatic.com; " +
+                    "img-src 'self' https: data:; " +
+                    "connect-src 'self' https://generativelanguage.googleapis.com https://api.openweathermap.org https://en.wikipedia.org https://api.unsplash.com https://api.openai.com;"
+                ]
+            }
+        });
+    });
+
     await checkPermissions();
     createWindow();
     createTray();
+    registerGlobalShortcut();
 
     app.on('activate', () => {
-        if (BrowserWindow.getAllWindows().length === 0) createWindow();
+        if (mainWindow) {
+            showWindow();
+        } else {
+            createWindow();
+        }
     });
+});
+
+app.on('will-quit', () => {
+    globalShortcut.unregisterAll();
 });
 
 app.on('window-all-closed', () => {

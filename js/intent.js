@@ -34,6 +34,10 @@ export class IntentDetector extends EventEmitter {
   addTranscript(text) {
     if (!text.trim()) return;
     this._buffer += ' ' + text.trim();
+    // Cap buffer to prevent unbounded growth during continuous speech
+    if (this._buffer.length > 500) {
+      this._buffer = this._buffer.slice(-500);
+    }
     this._analyze();
   }
 
@@ -102,7 +106,7 @@ export class IntentDetector extends EventEmitter {
     const prompt = `You are an intent classifier for a voice-controlled visualization dashboard.
 Analyze the user's speech and extract structured intents.
 
-User said: "${text}"${contextStr}
+User said: "${text.replace(/"/g, '\"').replace(/\n/g, ' ')}"${contextStr}
 
 Classify into one or more intents. Valid types:
 - WEATHER: User wants weather info. Extract location.

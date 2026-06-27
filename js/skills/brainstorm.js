@@ -20,7 +20,7 @@ export const BrainstormSkill = {
     const keys = getApiKeys();
     if (!keys.gemini) throw new Error('Gemini API key not set');
     
-    const model = keys.model || 'gemini-2.0-flash';
+    const model = keys.model || 'gemini-3.5-flash';
     const prompt = `Generate 6-8 creative and diverse ideas about: "${topic}"
 
 Return ONLY a JSON array of strings, each being one concise idea (max 15 words each). No markdown, no explanation.

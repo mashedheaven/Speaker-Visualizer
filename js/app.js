@@ -7,7 +7,7 @@ import { WeatherSkill } from './skills/weather.js';
 import { PlaceInfoSkill } from './skills/placeInfo.js';
 import { GeneralFactSkill } from './skills/generalFact.js';
 import { BrainstormSkill } from './skills/brainstorm.js';
-import { getApiKeys } from './utils.js';
+import { getApiKeys, initSettings } from './utils.js';
 
 class App {
   constructor() {
@@ -24,6 +24,7 @@ class App {
     // DOM references
     this.micBtn = document.getElementById('mic-btn');
     this.settingsBtn = document.getElementById('settings-btn');
+    this.menuBtn = document.getElementById('menu-btn');
     this.transcriptText = document.getElementById('transcript-text');
     this.waveformCanvas = document.getElementById('waveform-canvas');
     this.mainGrid = document.getElementById('main-grid');
@@ -37,6 +38,7 @@ class App {
     
     // Waveform animation frame reference
     this._waveformAnimId = null;
+    this._silenceTimer = null;
     
     this._bindEvents();
     this._checkInitialState();
@@ -48,6 +50,16 @@ class App {
     
     // Settings button
     this.settingsBtn?.addEventListener('click', () => this.settings.open());
+
+    // Hamburger menu (mobile sidebar toggle)
+    this.menuBtn?.addEventListener('click', () => {
+      document.querySelector('.sidebar')?.classList.toggle('sidebar--open');
+    });
+
+    // Setup prompt button (replace inline onclick)
+    document.getElementById('setup-open-settings')?.addEventListener('click', () => {
+      this.settings.open();
+    });
     
     // Clear button
     this.clearBtn?.addEventListener('click', () => this.tileManager.clearUnpinned());
@@ -115,7 +127,21 @@ class App {
       }
     });
 
-    // Electron IPC shortcut toggle
+    // Skill guide buttons
+    document.querySelectorAll('.sidebar__item[data-skill]').forEach(el => {
+      el.addEventListener('click', () => {
+        const skillName = el.getAttribute('data-skill');
+        this._showSkillGuide(skillName);
+        
+        // On mobile, close sidebar after clicking
+        const sidebar = document.querySelector('.sidebar');
+        if (sidebar && sidebar.classList.contains('sidebar--open')) {
+          sidebar.classList.remove('sidebar--open');
+        }
+      });
+    });
+
+    // Electron IPC shortcut toggle (now actually wired up from main.js)
     if (window.electronAPI) {
       window.electronAPI.onToggleListen(() => {
         this._toggleListening();
@@ -131,35 +157,33 @@ class App {
     } else {
       // Check for API keys first
       if (!this.settings.hasRequiredKeys()) {
-        this._showNotification('Please set your Gemini API key in Settings first.', 'warning');
+        this._showNotification('Please set your API key in Settings first.', 'warning');
         this.settings.open();
         return;
       }
       
       if (!SpeechEngine.isSupported()) {
-        this._showNotification('Speech recognition is not supported in this browser. Please use Chrome.', 'error');
+        this._showNotification('MediaRecorder is not supported.', 'error');
         return;
       }
       
-      // Explicitly trigger the microphone permission prompt
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        // We just need the permission, stop the tracks immediately so SpeechEngine can take over
-        stream.getTracks().forEach(track => track.stop());
-      } catch (err) {
-        console.error('Microphone access denied:', err);
-        this._showNotification('Microphone permission denied. Please allow it in macOS System Settings.', 'error');
-        return;
-      }
+      // Start speech engine (it gets its own mic stream)
+      await this.speech.start();
       
-      this.speech.start();
-      await this.audioAnalyzer.start();
-      this._startWaveform();
+      // Share the speech engine's stream with AudioAnalyzer (single mic request!)
+      const sharedStream = this.speech.getStream();
+      if (sharedStream) {
+        try {
+          await this.audioAnalyzer.start(sharedStream);
+        } catch (err) {
+          console.error('AudioAnalyzer start failed:', err);
+        }
+        this._startWaveform();
+      }
     }
   }
   
   _startWaveform() {
-    let silenceTimer = null;
     const container = document.querySelector('.app-container');
     
     const render = () => {
@@ -172,18 +196,17 @@ class App {
         for (let i = 0; i < data.length; i++) sum += data[i];
         const avg = sum / data.length;
         
-        if (avg > 8) { // 8/255 threshold for speech vs silence
-          this.speech.hasVoiceActivity = true;
+        if (avg > 8) {
           container.style.animationPlayState = 'running';
-          clearTimeout(silenceTimer);
-          silenceTimer = setTimeout(() => {
+          clearTimeout(this._silenceTimer);
+          this._silenceTimer = setTimeout(() => {
             if (container) container.style.animationPlayState = 'paused';
             
-            // Silence detected: user finished their sentence, flush it immediately!
+            // Silence detected: user finished speaking, flush transcription
             if (this.speech && this.speech.state === 'listening') {
               this.speech.flushAndTranscribe();
             }
-          }, 1200); // 1.2s of silence signals the end of an utterance
+          }, 1200);
         }
       }
       
@@ -197,6 +220,10 @@ class App {
       cancelAnimationFrame(this._waveformAnimId);
       this._waveformAnimId = null;
     }
+    // Clear the silence timer to prevent stale callbacks
+    clearTimeout(this._silenceTimer);
+    this._silenceTimer = null;
+
     // Clear canvas
     const ctx = this.waveformCanvas?.getContext('2d');
     if (ctx) ctx.clearRect(0, 0, this.waveformCanvas.width, this.waveformCanvas.height);
@@ -284,7 +311,7 @@ class App {
   
   _checkInitialState() {
     const keys = getApiKeys();
-    const hasKeys = !!(keys.gemini);
+    const hasKeys = !!(keys.gemini || keys.openai);
     
     // Show setup prompt if no keys
     const setupPrompt = document.getElementById('setup-prompt');
@@ -292,9 +319,39 @@ class App {
       setupPrompt.style.display = hasKeys ? 'none' : 'flex';
     }
   }
+
+  _showSkillGuide(skillName) {
+    const guides = {
+      'weather': { 
+        title: '🌤️ How to use Weather', 
+        content: 'Get real-time weather and forecasts for any location.\n\n**Try saying:**\n- "What is the weather like in Tokyo?"\n- "Is it going to rain in London today?"\n- "Weather in New York"' 
+      },
+      'place': { 
+        title: '🏛️ How to use Places', 
+        content: 'Discover facts, history, and photos of famous landmarks and cities.\n\n**Try saying:**\n- "Tell me about the Eiffel Tower"\n- "Where is the Golden Gate Bridge?"\n- "Information on Mount Everest"' 
+      },
+      'fact': { 
+        title: '📚 How to use Facts', 
+        content: 'Ask general knowledge questions and get detailed, easy-to-understand explanations.\n\n**Try saying:**\n- "Explain quantum physics to me"\n- "Why is the sky blue?"\n- "How do black holes work?"' 
+      },
+      'brainstorm': { 
+        title: '💡 How to use Brainstorm', 
+        content: 'Generate creative ideas for projects, writing, or problem-solving.\n\n**Try saying:**\n- "Give me 3 ideas for a sci-fi novel"\n- "Brainstorm marketing strategies for a coffee shop"\n- "What should I cook for dinner with chicken and rice?"' 
+      }
+    };
+    
+    const guide = guides[skillName];
+    if (!guide) return;
+    
+    // Create a tile using the 'fact' template which gracefully renders markdown
+    const tile = this.tileManager.addTile('fact', guide.title);
+    this.tileManager.updateTile(tile.id, { 
+      status: 'ready', 
+      data: { content: guide.content } 
+    });
+  }
   
   _showNotification(message, type = 'info') {
-    // Create a toast notification
     const toast = document.createElement('div');
     toast.className = `toast toast--${type}`;
     toast.style.cssText = `
@@ -317,7 +374,8 @@ class App {
   }
 }
 
-// Initialize on DOM ready
-document.addEventListener('DOMContentLoaded', () => {
+// Initialize on DOM ready — load settings async first, then boot app
+document.addEventListener('DOMContentLoaded', async () => {
+  await initSettings();
   window.app = new App();
 });

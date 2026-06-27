@@ -1,4 +1,4 @@
-import { formatTemp, escapeHtml, renderMarkdown } from './utils.js';
+import { renderMarkdown } from './utils.js';
 
 export class TileRenderer {
   constructor(gridElement, tileManager) {
@@ -29,10 +29,10 @@ export class TileRenderer {
     // Update body content based on status
     const body = el.querySelector('.tile__body');
     if (tile.status === 'ready' && tile.data) {
-      body.innerHTML = ''; // Clear loading skeletons
+      while (body.firstChild) body.removeChild(body.firstChild); // Clear loading skeletons
       body.appendChild(this._renderTileBody(tile));
     } else if (tile.status === 'error') {
-      body.innerHTML = '';
+      while (body.firstChild) body.removeChild(body.firstChild);
       body.appendChild(this._renderError(tile.error));
     }
     // Update pin button state
@@ -309,7 +309,7 @@ export class TileRenderer {
     const frag = document.createDocumentFragment();
     const container = document.createElement('div');
     container.className = 'brainstorm__ideas';
-    data.ideas.forEach((idea, i) => {
+    (data.ideas || []).forEach((idea, i) => {
       const card = document.createElement('div');
       card.className = 'brainstorm__idea';
       const num = document.createElement('span');

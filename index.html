@@ -7,10 +7,7 @@
   <meta name="theme-color" content="#0a0e1a">
   <title>Speaker Visualizer — Voice to Vision</title>
   
-  <!-- Google Fonts: Inter -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Google Fonts: JetBrains Mono & Inter loaded via CSS @import -->
   
   <!-- CSS -->
   <link rel="stylesheet" href="css/variables.css">
@@ -44,6 +41,11 @@
         <h1 class="header__title">Speaker Visualizer</h1>
       </div>
       <div class="header__controls">
+        <button id="menu-btn" class="btn btn--ghost btn--sm" aria-label="Toggle menu">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </button>
         <div class="header__status">
           <span id="status-dot" class="status-dot status-dot--inactive"></span>
           <span id="status-text" class="header__status-text">Ready</span>
@@ -125,7 +127,7 @@
           <span class="setup-prompt__icon">🔑</span>
           <h2 class="setup-prompt__title">API Keys Required</h2>
           <p class="setup-prompt__text">To get started, you'll need to add your API keys in Settings.</p>
-          <button class="btn btn--primary" onclick="document.getElementById('settings-btn').click()">Open Settings</button>
+          <button id="setup-open-settings" class="btn btn--primary">Open Settings</button>
         </div>
       </div>
       
@@ -148,6 +150,14 @@
     </div>
     <div class="settings__body">
       <div class="settings__group">
+        <label class="settings__label" for="api-provider">Speech & AI Provider</label>
+        <select id="api-provider" class="settings__input">
+          <option value="gemini">Google Gemini (Default)</option>
+          <option value="openai">OpenAI (Whisper + GPT)</option>
+        </select>
+      </div>
+      
+      <div id="gemini-group" class="settings__group">
         <label class="settings__label" for="gemini-key">Gemini API Key <span style="color:var(--accent-pink)">*required</span></label>
         <div class="settings__input-wrapper" style="gap: var(--space-2)">
           <input type="password" id="gemini-key" class="settings__input" placeholder="Enter your Gemini API key">
@@ -156,7 +166,7 @@
         </div>
         <small style="color:var(--text-muted);font-size:var(--text-xs)">Get a free key at <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--accent-cyan)">aistudio.google.com</a></small>
       </div>
-      <div class="settings__group">
+      <div id="gemini-model-group" class="settings__group">
         <label class="settings__label" for="gemini-model">Gemini Model</label>
         <select id="gemini-model" class="settings__input">
           <option value="gemini-3.5-flash">Gemini 3.5 Flash (Recommended)</option>
@@ -164,6 +174,17 @@
           <option value="gemini-3.1-pro">Gemini 3.1 Pro (Preview)</option>
         </select>
       </div>
+
+      <div id="openai-group" class="settings__group" style="display:none">
+        <label class="settings__label" for="openai-key">OpenAI API Key <span style="color:var(--accent-pink)">*required</span></label>
+        <div class="settings__input-wrapper" style="gap: var(--space-2)">
+          <input type="password" id="openai-key" class="settings__input" placeholder="Enter your OpenAI API key (sk-...)">
+          <button class="settings__toggle-vis btn btn--ghost btn--sm" title="Toggle visibility">👁️</button>
+          <button class="settings__clear-key btn btn--ghost btn--sm" data-target="openai-key" title="Clear key">🗑️</button>
+        </div>
+        <small style="color:var(--text-muted);font-size:var(--text-xs)">Uses Whisper-1 for STT</small>
+      </div>
+
       <div class="settings__group">
         <label class="settings__label" for="weather-key">OpenWeather API Key</label>
         <div class="settings__input-wrapper" style="gap: var(--space-2)">

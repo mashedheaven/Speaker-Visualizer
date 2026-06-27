@@ -91,6 +91,10 @@
   gap: var(--space-3);
 }
 
+#menu-btn {
+  display: none;
+}
+
 
 /* -----------------------------------------------------------------------
    3. SIDEBAR
@@ -313,6 +317,10 @@
    ----------------------------------------------------------------------- */
 
 @media (max-width: 960px) {
+  #menu-btn {
+    display: flex;
+  }
+
   .app-container {
     grid-template-columns: 1fr;
     grid-template-areas:

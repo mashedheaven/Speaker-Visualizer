@@ -15,7 +15,7 @@ export class SettingsPanel {
     // Save button
     this.dialog?.querySelector('.settings__save')?.addEventListener('click', () => this.save());
 
-    // Bind clear buttons (dustbin icons)
+    // Clear buttons (dustbin icons)
     this.dialog?.querySelectorAll('.settings__clear-key').forEach(btn => {
       btn.addEventListener('click', () => {
         const targetId = btn.getAttribute('data-target');
@@ -34,6 +34,10 @@ export class SettingsPanel {
         }
       });
     });
+
+    // Provider selector — show/hide relevant API key fields
+    const providerSelect = this.dialog?.querySelector('#api-provider');
+    providerSelect?.addEventListener('change', () => this._updateProviderFields());
     
     // Close on backdrop click
     this.dialog?.addEventListener('click', (e) => {
@@ -47,27 +51,45 @@ export class SettingsPanel {
     });
   }
 
+  _updateProviderFields() {
+    const provider = this.dialog?.querySelector('#api-provider')?.value || 'gemini';
+    const geminiGroup = this.dialog?.querySelector('#gemini-group');
+    const geminiModelGroup = this.dialog?.querySelector('#gemini-model-group');
+    const openaiGroup = this.dialog?.querySelector('#openai-group');
+
+    if (geminiGroup) geminiGroup.style.display = provider === 'gemini' ? '' : 'none';
+    if (geminiModelGroup) geminiModelGroup.style.display = provider === 'gemini' ? '' : 'none';
+    if (openaiGroup) openaiGroup.style.display = provider === 'openai' ? '' : 'none';
+  }
+
   clearKey(targetId) {
     const input = this.dialog?.querySelector(`#${targetId}`);
     if (input && input.value) {
-      const fieldName = targetId === 'gemini-key' ? 'Gemini API Key' 
-                      : targetId === 'weather-key' ? 'OpenWeather API Key' 
-                      : 'Unsplash Access Key';
+      const names = {
+        'gemini-key': 'Gemini API Key',
+        'openai-key': 'OpenAI API Key',
+        'weather-key': 'OpenWeather API Key',
+        'unsplash-key': 'Unsplash Access Key'
+      };
+      const fieldName = names[targetId] || 'API Key';
                       
       if (confirm(`Are you sure you want to delete the saved ${fieldName}?`)) {
         input.value = '';
-        this.saveQuietly();
+        this._saveKeys();
       }
     }
   }
 
-  saveQuietly() {
+  /** Shared save logic used by both save() and clearKey() */
+  _saveKeys() {
     const gemini = this.dialog?.querySelector('#gemini-key')?.value?.trim() || '';
+    const openai = this.dialog?.querySelector('#openai-key')?.value?.trim() || '';
     const openweather = this.dialog?.querySelector('#weather-key')?.value?.trim() || '';
     const unsplash = this.dialog?.querySelector('#unsplash-key')?.value?.trim() || '';
     const model = this.dialog?.querySelector('#gemini-model')?.value || 'gemini-3.5-flash';
+    const provider = this.dialog?.querySelector('#api-provider')?.value || 'gemini';
     
-    setApiKeys({ gemini, openweather, unsplash, model });
+    setApiKeys({ gemini, openai, openweather, unsplash, model, provider });
     
     // Dispatch custom event so app knows keys changed
     window.dispatchEvent(new CustomEvent('settings-changed'));
@@ -76,39 +98,42 @@ export class SettingsPanel {
   open() {
     // Load current keys into inputs
     const keys = getApiKeys();
-    const geminiInput = this.dialog?.querySelector('#gemini-key');
-    const weatherInput = this.dialog?.querySelector('#weather-key');
-    const unsplashInput = this.dialog?.querySelector('#unsplash-key');
+    const inputs = {
+      'gemini-key': keys.gemini || '',
+      'openai-key': keys.openai || '',
+      'weather-key': keys.openweather || '',
+      'unsplash-key': keys.unsplash || '',
+    };
+    
+    for (const [id, val] of Object.entries(inputs)) {
+      const el = this.dialog?.querySelector(`#${id}`);
+      if (el) el.value = val;
+    }
+
     const modelSelect = this.dialog?.querySelector('#gemini-model');
-    
-    if (geminiInput) geminiInput.value = keys.gemini || '';
-    if (weatherInput) weatherInput.value = keys.openweather || '';
-    if (unsplashInput) unsplashInput.value = keys.unsplash || '';
     if (modelSelect) modelSelect.value = keys.model || 'gemini-3.5-flash';
-    
+
+    const providerSelect = this.dialog?.querySelector('#api-provider');
+    if (providerSelect) providerSelect.value = keys.provider || 'gemini';
+
+    this._updateProviderFields();
     this.dialog?.showModal();
   }
   
   save() {
-    const gemini = this.dialog?.querySelector('#gemini-key')?.value?.trim() || '';
-    const openweather = this.dialog?.querySelector('#weather-key')?.value?.trim() || '';
-    const unsplash = this.dialog?.querySelector('#unsplash-key')?.value?.trim() || '';
-    const model = this.dialog?.querySelector('#gemini-model')?.value || 'gemini-3.5-flash';
-    
-    setApiKeys({ gemini, openweather, unsplash, model });
+    this._saveKeys();
     this.close();
-    
-    // Dispatch custom event so app knows keys changed
-    window.dispatchEvent(new CustomEvent('settings-changed'));
   }
   
   close() {
     this.dialog?.close();
   }
   
-  // Check if minimum required keys are set
+  // Check if minimum required keys are set for the selected provider
   hasRequiredKeys() {
     const keys = getApiKeys();
+    const provider = keys.provider || 'gemini';
+    if (provider === 'openai') return !!(keys.openai);
     return !!(keys.gemini);
   }
 }

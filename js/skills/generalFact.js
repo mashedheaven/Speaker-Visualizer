@@ -45,7 +45,7 @@ export const GeneralFactSkill = {
     } catch { return null; }
   },
   
-  async _fetchLLMExplanation(topic, apiKey, model = 'gemini-2.0-flash') {
+  async _fetchLLMExplanation(topic, apiKey, model = 'gemini-3.5-flash') {
     try {
       const prompt = `Explain "${topic}" concisely for a curious adult. Use this format:
 ### ${topic}

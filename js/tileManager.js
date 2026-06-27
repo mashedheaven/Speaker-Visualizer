@@ -163,6 +163,14 @@ export class TileManager extends EventEmitter {
    */
   clearUnpinned() {
     const unpinned = this.tiles.filter(t => !t.pinned);
-    unpinned.forEach(t => this.removeTile(t.id));
+    if (unpinned.length === 0) return;
+    unpinned.forEach(t => {
+      const index = this.tiles.findIndex(tile => tile.id === t.id);
+      if (index !== -1) {
+        this.tiles.splice(index, 1);
+        this.emit('tileRemoved', t.id);
+      }
+    });
+    this.emit('tilesChanged', this.tiles);
   }
 }

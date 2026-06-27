@@ -17,11 +17,9 @@ export const PlaceInfoSkill = {
     const cached = cache.get(cacheKey);
     if (cached) return cached;
     
-    // Fetch Wikipedia summary and Unsplash image in parallel
-    const [wikiData, imageUrl] = await Promise.all([
-      this._fetchWikipedia(place),
-      this._fetchImage(place)
-    ]);
+    // Fetch Wikipedia data first, then image (reuse wiki thumbnail if no Unsplash key)
+    const wikiData = await this._fetchWikipedia(place);
+    const imageUrl = await this._fetchImage(place, wikiData);
     
     const result = {
       title: wikiData.title || place,
@@ -54,7 +52,8 @@ export const PlaceInfoSkill = {
             return {
               title: data.title,
               summary: data.extract || '',
-              facts: this._extractFacts(data)
+              facts: this._extractFacts(data),
+              _thumbnail: data.thumbnail?.source || null
             };
           }
         }
@@ -64,7 +63,8 @@ export const PlaceInfoSkill = {
       return {
         title: data.title,
         summary: data.extract || '',
-        facts: this._extractFacts(data)
+        facts: this._extractFacts(data),
+        _thumbnail: data.thumbnail?.source || null
       };
     } catch (e) {
       console.warn('Wikipedia fetch failed:', e);
@@ -79,17 +79,11 @@ export const PlaceInfoSkill = {
     return facts;
   },
   
-  async _fetchImage(query) {
+  async _fetchImage(query, wikiData) {
     const keys = getApiKeys();
     if (!keys.unsplash) {
-      // Fallback to Wikipedia thumbnail
-      try {
-        const res = await fetch(
-          `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(query)}`
-        );
-        const data = await res.json();
-        return data.thumbnail?.source || null;
-      } catch { return null; }
+      // Reuse wiki data thumbnail instead of making a duplicate API call
+      return wikiData?._thumbnail || null;
     }
     
     try {
