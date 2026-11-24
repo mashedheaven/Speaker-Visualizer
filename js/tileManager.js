@@ -37,6 +37,57 @@ export class TileManager extends EventEmitter {
     /** @type {TileData[]} */
     this.tiles = [];
     this.maxTiles = maxTiles;
+    this._storageKey = 'sv_persisted_tiles';
+
+    // Auto-save whenever tiles mutate
+    this.on('tilesChanged', () => this._saveToStorage());
+  }
+
+  /**
+   * Load saved tiles from storage (survives app restart)
+   */
+  loadFromStorage() {
+    try {
+      const raw = localStorage.getItem(this._storageKey);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        // Load in reverse order so unshift restores exact order
+        parsed.reverse().forEach(saved => {
+          if (saved && saved.id && saved.status === 'ready') {
+            this.tiles.unshift(saved);
+            this.emit('tileAdded', saved);
+          }
+        });
+        if (this.tiles.length > 0) {
+          this.emit('tilesChanged', this.tiles);
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to restore persisted tiles:', e);
+    }
+  }
+
+  _saveToStorage() {
+    try {
+      // Save ready tiles (max 12), preserving pinned status
+      const toSave = this.tiles
+        .filter(t => t.status === 'ready' && t.type !== 'timer') // exclude transient countdowns
+        .map(t => ({
+          id: t.id,
+          type: t.type,
+          title: t.title,
+          status: t.status,
+          pinned: t.pinned,
+          expanded: false,
+          createdAt: t.createdAt,
+          data: t.data,
+          error: null
+        }));
+      localStorage.setItem(this._storageKey, JSON.stringify(toSave));
+    } catch (e) {
+      console.warn('Failed to save tiles to storage:', e);
+    }
   }
 
   /**
@@ -118,6 +169,7 @@ export class TileManager extends EventEmitter {
 
     tile.pinned = !tile.pinned;
     this.emit('tileUpdated', tile);
+    this.emit('tilesChanged', this.tiles);
   }
 
   /**

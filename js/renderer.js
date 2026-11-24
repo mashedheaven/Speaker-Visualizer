@@ -70,6 +70,20 @@ export class TileRenderer {
     el.className = `tile tile--${tile.type} tile--loading`;
     el.dataset.tileId = tile.id;
     
+    // Holographic scanline sweep
+    const scanline = document.createElement('div');
+    scanline.className = 'tile__scanline';
+    scanline.addEventListener('animationend', () => scanline.remove(), { once: true });
+    el.appendChild(scanline);
+
+    // Dynamic holographic glare overlay
+    const glare = document.createElement('div');
+    glare.className = 'tile__glare';
+    el.appendChild(glare);
+
+    // 3D Parallax Tilt
+    this._attachParallax(el);
+
     // Header
     const header = document.createElement('div');
     header.className = 'tile__header';
@@ -84,6 +98,16 @@ export class TileRenderer {
     const actions = document.createElement('div');
     actions.className = 'tile__actions';
     
+    // Export Markdown button
+    const exportBtn = document.createElement('button');
+    exportBtn.className = 'tile__action-btn tile__export';
+    exportBtn.textContent = '📋';
+    exportBtn.title = 'Copy as Markdown';
+    exportBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this._exportTileMarkdown(tile);
+    });
+
     // Pin button
     const pinBtn = document.createElement('button');
     pinBtn.className = 'tile__action-btn tile__pin';
@@ -114,7 +138,7 @@ export class TileRenderer {
       this.tileManager.removeTile(tile.id);
     });
     
-    actions.append(pinBtn, expandBtn, closeBtn);
+    actions.append(exportBtn, pinBtn, expandBtn, closeBtn);
     header.append(indicator, title, actions);
     
     // Body (loading state)
@@ -187,8 +211,17 @@ export class TileRenderer {
     switch (tile.type) {
       case 'weather': return this._renderWeather(tile.data);
       case 'place': return this._renderPlace(tile.data);
-      case 'fact': return this._renderFact(tile.data);
-      case 'brainstorm': return this._renderBrainstorm(tile.data);
+      case 'fact': return this._renderFact(tile.data, tile.title);
+      case 'brainstorm': return this._renderBrainstorm(tile.data, tile.title);
+      case 'timer': return this._renderTimer(tile, tile.data);
+      case 'system': return this._renderSystem(tile.data);
+      case 'finance': return this._renderFinance(tile.data);
+      case 'news': return this._renderNews(tile.data);
+      case 'calculator': return this._renderCalculator(tile.data);
+      case 'music': return this._renderMusic(tile.data);
+      case 'calendar': return this._renderCalendar(tile.data);
+      case 'webSearch': return this._renderWebSearch(tile.data);
+      case 'imageSearch': return this._renderImageSearch(tile.data);
       default: return document.createDocumentFragment();
     }
   }
@@ -294,34 +327,567 @@ export class TileRenderer {
     return frag;
   }
   
-  _renderFact(data) {
+  _renderFact(data, title) {
     // data: { content (markdown string) }
     const frag = document.createDocumentFragment();
     const container = document.createElement('div');
     container.className = 'fact__content';
     container.appendChild(renderMarkdown(data.content));
+    
+    // Holographic inquiry follow-up button
+    const tellMoreBtn = document.createElement('button');
+    tellMoreBtn.className = 'btn--tell-more';
+    tellMoreBtn.textContent = '⚡ Tell me more';
+    tellMoreBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (window.app?.processText) {
+        window.app.processText(`Tell me more about ${title || 'this'}`);
+      }
+    });
+    container.appendChild(tellMoreBtn);
+
     frag.appendChild(container);
     return frag;
   }
   
-  _renderBrainstorm(data) {
+  _renderBrainstorm(data, title) {
     // data: { ideas: [string] }
     const frag = document.createDocumentFragment();
     const container = document.createElement('div');
     container.className = 'brainstorm__ideas';
+    const starredSet = new Set();
+
     (data.ideas || []).forEach((idea, i) => {
       const card = document.createElement('div');
       card.className = 'brainstorm__idea';
+      
       const num = document.createElement('span');
       num.className = 'brainstorm__idea-number';
       num.textContent = `#${i + 1}`;
+      
       const text = document.createElement('p');
       text.textContent = idea;
-      card.append(num, text);
+      text.style.flex = '1';
+
+      const starBtn = document.createElement('button');
+      starBtn.className = 'idea__star';
+      starBtn.textContent = '☆';
+      starBtn.title = 'Star idea';
+      starBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (starredSet.has(idea)) {
+          starredSet.delete(idea);
+          starBtn.textContent = '☆';
+          starBtn.classList.remove('idea__star--active');
+        } else {
+          starredSet.add(idea);
+          starBtn.textContent = '★';
+          starBtn.classList.add('idea__star--active');
+        }
+      });
+
+      card.append(num, text, starBtn);
       container.appendChild(card);
     });
+
+    const exportBtn = document.createElement('button');
+    exportBtn.className = 'btn--export-ideas';
+    exportBtn.textContent = '✨ Export Ideas to Clipboard';
+    exportBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const listToExport = starredSet.size > 0 
+        ? Array.from(starredSet) 
+        : (data.ideas || []);
+      const md = `### Brainstorm: ${title || 'Ideas'}\n\n` + listToExport.map((it, idx) => `${idx + 1}. ${it}`).join('\n');
+      navigator.clipboard.writeText(md).then(() => {
+        if (window.app?._showNotification) {
+          window.app._showNotification(`Copied ${listToExport.length} ideas to clipboard!`, 'success');
+        }
+      });
+    });
+
+    frag.append(container, exportBtn);
+    return frag;
+  }
+
+  _renderTimer(tile, data) {
+    // data: { label, totalSeconds, remainingSeconds, startTime, endTime }
+    const frag = document.createDocumentFragment();
+    const container = document.createElement('div');
+    container.className = 'timer__container';
+
+    const gauge = document.createElement('div');
+    gauge.className = 'timer__gauge';
+
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('class', 'timer__svg');
+    svg.setAttribute('viewBox', '0 0 140 140');
+
+    const radius = 56;
+    const circumference = 2 * Math.PI * radius;
+
+    const bgCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    bgCircle.setAttribute('class', 'timer__circle-bg');
+    bgCircle.setAttribute('cx', '70');
+    bgCircle.setAttribute('cy', '70');
+    bgCircle.setAttribute('r', radius);
+
+    const progressCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    progressCircle.setAttribute('class', 'timer__circle-progress');
+    progressCircle.setAttribute('cx', '70');
+    progressCircle.setAttribute('cy', '70');
+    progressCircle.setAttribute('r', radius);
+    progressCircle.setAttribute('stroke-dasharray', `${circumference}`);
+    progressCircle.setAttribute('stroke-dashoffset', '0');
+
+    svg.append(bgCircle, progressCircle);
+
+    const center = document.createElement('div');
+    center.className = 'timer__center';
+
+    const timeDisplay = document.createElement('div');
+    timeDisplay.className = 'timer__time';
+
+    const labelDisplay = document.createElement('div');
+    labelDisplay.className = 'timer__label';
+    labelDisplay.textContent = data.label || 'COUNTDOWN';
+
+    center.append(timeDisplay, labelDisplay);
+    gauge.append(svg, center);
+    container.append(gauge);
+
+    const formatTime = (secs) => {
+      const m = Math.floor(secs / 60);
+      const s = secs % 60;
+      return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    };
+
+    let remaining = data.totalSeconds;
+    timeDisplay.textContent = formatTime(remaining);
+
+    // Live countdown interval
+    const interval = setInterval(() => {
+      remaining--;
+      if (remaining <= 0) {
+        remaining = 0;
+        clearInterval(interval);
+        timeDisplay.textContent = '00:00';
+        progressCircle.style.strokeDashoffset = `${circumference}`;
+        timeDisplay.classList.add('timer__completed');
+        if (window.app?.jarvis) {
+          window.app.jarvis.playChime('complete');
+          window.app.jarvis.speak(`Sir, your timer for ${data.label || 'countdown'} has expired.`);
+        }
+      } else {
+        timeDisplay.textContent = formatTime(remaining);
+        const offset = circumference * (1 - remaining / data.totalSeconds);
+        progressCircle.style.strokeDashoffset = `${offset}`;
+      }
+    }, 1000);
+
+    // Clean up timer if tile is removed
+    const observer = new MutationObserver(() => {
+      if (!document.body.contains(container)) {
+        clearInterval(interval);
+        observer.disconnect();
+      }
+    });
+    observer.observe(this.grid, { childList: true });
+
     frag.appendChild(container);
     return frag;
+  }
+
+  _renderSystem(data) {
+    // data: { cpu: {cores, loadPct}, memory: {usedGB, totalGB, pct}, battery: {level, charging}, reactor: {output, temp, status} }
+    const frag = document.createDocumentFragment();
+    const grid = document.createElement('div');
+    grid.className = 'system__grid';
+
+    // 1. CPU
+    const cpuCard = document.createElement('div');
+    cpuCard.className = 'system__card';
+    cpuCard.innerHTML = `
+      <div class="system__card-header">
+        <span class="system__card-label">CPU (${data.cpu.cores} Cores)</span>
+        <span class="system__card-value">${data.cpu.loadPct}%</span>
+      </div>
+      <div class="system__bar-track">
+        <div class="system__bar-fill" style="width: ${data.cpu.loadPct}%"></div>
+      </div>
+    `;
+
+    // 2. Memory
+    const memCard = document.createElement('div');
+    memCard.className = 'system__card';
+    memCard.innerHTML = `
+      <div class="system__card-header">
+        <span class="system__card-label">Memory</span>
+        <span class="system__card-value">${data.memory.usedGB} / ${data.memory.totalGB} GB</span>
+      </div>
+      <div class="system__bar-track">
+        <div class="system__bar-fill" style="width: ${data.memory.pct}%"></div>
+      </div>
+    `;
+
+    // 3. Battery
+    const batCard = document.createElement('div');
+    batCard.className = 'system__card';
+    batCard.innerHTML = `
+      <div class="system__card-header">
+        <span class="system__card-label">Power ${data.battery.charging ? '⚡ Charging' : '🔋 Battery'}</span>
+        <span class="system__card-value">${data.battery.level}%</span>
+      </div>
+      <div class="system__bar-track">
+        <div class="system__bar-fill" style="width: ${data.battery.level}%; background: ${data.battery.level < 20 ? '#ef4444' : 'linear-gradient(90deg, #10b981, #34d399)'}"></div>
+      </div>
+    `;
+
+    // 4. Arc Reactor Core
+    const coreCard = document.createElement('div');
+    coreCard.className = 'system__card';
+    coreCard.innerHTML = `
+      <div class="system__card-header">
+        <span class="system__card-label">Arc Core Output</span>
+        <span class="system__card-value" style="color:#00d4ff">${data.reactor.output}%</span>
+      </div>
+      <div class="system__bar-track">
+        <div class="system__bar-fill" style="width: ${data.reactor.output}%; background: linear-gradient(90deg, #00d4ff, #a855f7)"></div>
+      </div>
+    `;
+
+    grid.append(cpuCard, memCard, batCard, coreCard);
+    frag.appendChild(grid);
+    return frag;
+  }
+
+  _renderFinance(data) {
+    // data: { symbol, name, price, changePct, isPositive, high24h, low24h, sparkline }
+    const frag = document.createDocumentFragment();
+    const main = document.createElement('div');
+    main.className = 'finance__main';
+
+    const header = document.createElement('div');
+    header.className = 'finance__header';
+    header.innerHTML = `
+      <h4 style="font-size:var(--text-base);font-weight:600;color:var(--text-primary)">${data.name}</h4>
+      <span class="finance__symbol">${data.symbol}</span>
+    `;
+
+    const priceRow = document.createElement('div');
+    priceRow.className = 'finance__price-row';
+    const priceEl = document.createElement('span');
+    priceEl.className = 'finance__price';
+    priceEl.style.color = data.isPositive ? '#10b981' : '#ef4444';
+    priceEl.textContent = data.price;
+
+    const changeEl = document.createElement('span');
+    changeEl.className = `finance__change ${data.isPositive ? 'finance__change--up' : 'finance__change--down'}`;
+    changeEl.textContent = data.changePct;
+    priceRow.append(priceEl, changeEl);
+
+    // Mini SVG Sparkline
+    const sparklineSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    sparklineSvg.setAttribute('class', 'finance__sparkline');
+    sparklineSvg.setAttribute('viewBox', '0 0 280 48');
+    sparklineSvg.setAttribute('preserveAspectRatio', 'none');
+
+    if (data.sparkline && data.sparkline.length > 1) {
+      const min = Math.min(...data.sparkline);
+      const max = Math.max(...data.sparkline) || 1;
+      const range = (max - min) || 1;
+      const step = 280 / (data.sparkline.length - 1);
+
+      const points = data.sparkline.map((val, idx) => {
+        const x = idx * step;
+        const y = 44 - ((val - min) / range) * 38;
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+      }).join(' ');
+
+      const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+      polyline.setAttribute('points', points);
+      polyline.setAttribute('fill', 'none');
+      polyline.setAttribute('stroke', data.isPositive ? '#10b981' : '#ef4444');
+      polyline.setAttribute('stroke-width', '2.5');
+      polyline.setAttribute('stroke-linecap', 'round');
+      polyline.setAttribute('stroke-linejoin', 'round');
+      sparklineSvg.appendChild(polyline);
+    }
+
+    const stats = document.createElement('div');
+    stats.className = 'finance__stats';
+    stats.innerHTML = `
+      <span>24h High: <strong>${data.high24h}</strong></span>
+      <span>24h Low: <strong>${data.low24h}</strong></span>
+    `;
+
+    main.append(header, priceRow, sparklineSvg, stats);
+    frag.appendChild(main);
+    return frag;
+  }
+
+  _renderNews(data) {
+    // data: { topic, articles: [{source, title, time}] }
+    const frag = document.createDocumentFragment();
+    const list = document.createElement('div');
+    list.className = 'news__list';
+
+    (data.articles || []).forEach(art => {
+      const item = document.createElement('div');
+      item.className = 'news__item';
+      item.innerHTML = `
+        <div class="news__header">
+          <span class="news__source">${art.source}</span>
+          <span class="news__time">${art.time}</span>
+        </div>
+        <div class="news__title">${art.title}</div>
+      `;
+      list.appendChild(item);
+    });
+
+    frag.appendChild(list);
+    return frag;
+  }
+
+  _renderCalculator(data) {
+    // data: { expression, result, steps, spokenResult }
+    const frag = document.createDocumentFragment();
+    const container = document.createElement('div');
+    container.className = 'calc__container';
+
+    const display = document.createElement('div');
+    display.className = 'calc__display';
+
+    const expr = document.createElement('div');
+    expr.className = 'calc__expression';
+    expr.textContent = data.expression || '';
+
+    const res = document.createElement('div');
+    res.className = 'calc__result';
+    res.textContent = data.result || '0';
+
+    display.append(expr, res);
+
+    const stepsList = document.createElement('div');
+    stepsList.className = 'calc__steps';
+    (data.steps || []).forEach(step => {
+      const s = document.createElement('div');
+      s.textContent = `• ${step}`;
+      stepsList.appendChild(s);
+    });
+
+    container.append(display, stepsList);
+    frag.appendChild(container);
+    return frag;
+  }
+
+  _renderMusic(data) {
+    // data: { title, artist, album, albumArt, previewUrl, genre, year }
+    const frag = document.createDocumentFragment();
+    const container = document.createElement('div');
+    container.className = 'music__container';
+
+    const card = document.createElement('div');
+    card.className = 'music__card';
+
+    if (data.albumArt) {
+      const img = document.createElement('img');
+      img.className = 'music__art';
+      img.src = data.albumArt;
+      img.alt = data.title;
+      img.loading = 'lazy';
+      card.appendChild(img);
+    }
+
+    const details = document.createElement('div');
+    details.className = 'music__details';
+
+    const track = document.createElement('div');
+    track.className = 'music__track';
+    track.textContent = data.title;
+
+    const artist = document.createElement('div');
+    artist.className = 'music__artist';
+    artist.textContent = data.artist;
+
+    const album = document.createElement('div');
+    album.className = 'music__album';
+    album.textContent = `${data.album} (${data.year || ''}) • ${data.genre || 'Rock'}`;
+
+    details.append(track, artist, album);
+    card.appendChild(details);
+    container.appendChild(card);
+
+    if (data.previewUrl) {
+      const audio = document.createElement('audio');
+      audio.className = 'music__audio-ctrl';
+      audio.controls = true;
+      audio.src = data.previewUrl;
+      container.appendChild(audio);
+    }
+
+    frag.appendChild(container);
+    return frag;
+  }
+
+  _renderCalendar(data) {
+    // data: { date, summary, events: [{ time, title, category, urgent }] }
+    const frag = document.createDocumentFragment();
+    
+    const header = document.createElement('div');
+    header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-2);font-size:var(--text-xs);color:var(--text-muted);font-family:var(--font-mono)';
+    header.innerHTML = `<span>📅 ${data.date || 'Today'}</span><span>${data.events?.length || 0} Briefings</span>`;
+
+    const timeline = document.createElement('div');
+    timeline.className = 'cal__timeline';
+
+    (data.events || []).forEach(evt => {
+      const item = document.createElement('div');
+      item.className = `cal__event ${evt.urgent ? 'cal__event--urgent' : ''}`;
+      
+      const time = document.createElement('span');
+      time.className = 'cal__time';
+      time.textContent = `${evt.time} [${evt.category || 'Strategic'}]`;
+
+      const title = document.createElement('span');
+      title.className = 'cal__title';
+      title.textContent = evt.title;
+
+      item.append(time, title);
+      timeline.appendChild(item);
+    });
+
+    frag.append(header, timeline);
+    return frag;
+  }
+
+  _renderWebSearch(data) {
+    // data: { query, results: [{ title, snippet, url, source }] }
+    const frag = document.createDocumentFragment();
+    const list = document.createElement('div');
+    list.className = 'websearch__list';
+
+    (data.results || []).forEach(res => {
+      const card = document.createElement('a');
+      card.className = 'websearch__card';
+      card.href = res.url || '#';
+      card.target = '_blank';
+      card.rel = 'noopener noreferrer';
+      card.addEventListener('click', (e) => {
+        if (window.electronAPI?.openExternal && res.url) {
+          e.preventDefault();
+          window.electronAPI.openExternal(res.url);
+        }
+      });
+
+      const title = document.createElement('span');
+      title.className = 'websearch__card-title';
+      title.textContent = `${res.title} ↗`;
+
+      const snippet = document.createElement('span');
+      snippet.className = 'websearch__card-snippet';
+      snippet.textContent = res.snippet;
+
+      card.append(title, snippet);
+      list.appendChild(card);
+    });
+
+    frag.appendChild(list);
+    return frag;
+  }
+
+  _renderImageSearch(data) {
+    // data: { query, images: [{ url, thumb, title, author }] }
+    const frag = document.createDocumentFragment();
+    const grid = document.createElement('div');
+    grid.className = 'imagesearch__grid';
+
+    (data.images || []).forEach(imgData => {
+      const item = document.createElement('div');
+      item.className = 'imagesearch__item';
+
+      const img = document.createElement('img');
+      img.className = 'imagesearch__img';
+      img.src = imgData.thumb || imgData.url;
+      img.alt = imgData.title || data.query;
+      img.loading = 'lazy';
+
+      item.addEventListener('click', () => {
+        window.open(imgData.url, '_blank');
+      });
+
+      item.appendChild(img);
+      grid.appendChild(item);
+    });
+
+    frag.appendChild(grid);
+    return frag;
+  }
+
+  _exportTileMarkdown(tile) {
+    let md = `# [JARVIS INTELLIGENCE] ${tile.title}\n`;
+    md += `**Classification**: ${tile.type.toUpperCase()}\n`;
+    md += `**Timestamp**: ${new Date(tile.createdAt).toISOString()}\n\n`;
+
+    if (tile.type === 'weather' && tile.data) {
+      md += `**Location**: ${tile.data.location}\n`;
+      md += `**Temperature**: ${Math.round(tile.data.temp)}°C (Feels like ${Math.round(tile.data.feelsLike)}°C)\n`;
+      md += `**Condition**: ${tile.data.condition}\n`;
+      md += `**Humidity**: ${tile.data.humidity}% | **Wind**: ${tile.data.windSpeed} m/s\n`;
+    } else if (tile.type === 'place' && tile.data) {
+      md += `${tile.data.summary || ''}\n\n`;
+      if (tile.data.facts?.length) {
+        md += `### Strategic Intelligence:\n` + tile.data.facts.map(f => `- ${f}`).join('\n') + '\n';
+      }
+    } else if (tile.type === 'fact' && tile.data) {
+      md += `${tile.data.content}\n`;
+    } else if (tile.type === 'brainstorm' && tile.data) {
+      md += `### Strategic Concepts:\n` + (tile.data.ideas || []).map((idea, i) => `${i + 1}. ${idea}`).join('\n') + '\n';
+    } else if (tile.type === 'timer' && tile.data) {
+      md += `**Timer Label**: ${tile.data.label}\n**Duration**: ${tile.data.totalSeconds} seconds\n`;
+    } else if (tile.type === 'system' && tile.data) {
+      md += `### Stark Telemetry:\n`;
+      md += `- CPU Cores: ${tile.data.cpu?.cores} (${tile.data.cpu?.loadPct}% load)\n`;
+      md += `- Memory: ${tile.data.memory?.usedGB} / ${tile.data.memory?.totalGB} GB\n`;
+      md += `- Power: ${tile.data.battery?.level}%\n`;
+      md += `- Arc Reactor Output: ${tile.data.reactor?.output}%\n`;
+    } else if (tile.type === 'finance' && tile.data) {
+      md += `### Financial Telemetry:\n`;
+      md += `- Asset: ${tile.data.name} (${tile.data.symbol})\n`;
+      md += `- Price: ${tile.data.price} (${tile.data.changePct})\n`;
+    } else if (tile.type === 'news' && tile.data) {
+      md += `### Intelligence Wire:\n`;
+      (tile.data.articles || []).forEach(a => {
+        md += `- [${a.source}] ${a.title} (${a.time})\n`;
+      });
+    } else if (tile.type === 'calculator' && tile.data) {
+      md += `**Formula**: ${tile.data.expression}\n**Result**: ${tile.data.result}\n`;
+    } else if (tile.type === 'music' && tile.data) {
+      md += `**Track**: ${tile.data.title}\n**Artist**: ${tile.data.artist}\n**Album**: ${tile.data.album}\n`;
+    } else if (tile.type === 'calendar' && tile.data) {
+      md += `### Agenda for ${tile.data.date}:\n`;
+      (tile.data.events || []).forEach(e => {
+        md += `- ${e.time}: ${e.title} [${e.category}]\n`;
+      });
+    } else if (tile.type === 'webSearch' && tile.data) {
+      md += `### Web Index for: ${tile.data.query}\n`;
+      (tile.data.results || []).forEach(r => {
+        md += `- [${r.title}](${r.url}): ${r.snippet}\n`;
+      });
+    } else if (tile.type === 'imageSearch' && tile.data) {
+      md += `### Visual Archive for: ${tile.data.query}\n`;
+      (tile.data.images || []).forEach(img => {
+        md += `![${img.title}](${img.url})\n`;
+      });
+    }
+
+    navigator.clipboard.writeText(md).then(() => {
+      if (window.app?._showNotification) {
+        window.app._showNotification('Copied tile intelligence to clipboard as Markdown', 'success');
+      }
+    }).catch(err => {
+      console.warn('Clipboard write failed:', err);
+    });
   }
   
   _renderError(error) {
@@ -350,6 +916,39 @@ export class TileRenderer {
     this._overlayEl?.classList.toggle('tile-overlay--visible', show);
   }
   
+  _attachParallax(el) {
+    let ticking = false;
+
+    el.addEventListener('mousemove', (e) => {
+      if (el.classList.contains('tile--expanded')) return;
+      if (ticking) return;
+      ticking = true;
+
+      requestAnimationFrame(() => {
+        const rect = el.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const cx = rect.width / 2;
+        const cy = rect.height / 2;
+
+        const rotX = ((y - cy) / cy) * -6; // max 6 deg
+        const rotY = ((x - cx) / cx) * 6;  // max 6 deg
+
+        el.style.transform = `perspective(800px) rotateX(${rotX.toFixed(2)}deg) rotateY(${rotY.toFixed(2)}deg) translateY(-2px)`;
+        el.style.setProperty('--glare-x', `${(x / rect.width * 100).toFixed(1)}%`);
+        el.style.setProperty('--glare-y', `${(y / rect.height * 100).toFixed(1)}%`);
+        ticking = false;
+      });
+    });
+
+    el.addEventListener('mouseleave', () => {
+      if (el.classList.contains('tile--expanded')) return;
+      el.style.transform = '';
+      el.style.removeProperty('--glare-x');
+      el.style.removeProperty('--glare-y');
+    });
+  }
+
   _updateEmptyState() {
     const emptyState = document.getElementById('empty-state');
     if (emptyState) {

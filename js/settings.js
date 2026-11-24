@@ -88,8 +88,10 @@ export class SettingsPanel {
     const unsplash = this.dialog?.querySelector('#unsplash-key')?.value?.trim() || '';
     const model = this.dialog?.querySelector('#gemini-model')?.value || 'gemini-3.5-flash';
     const provider = this.dialog?.querySelector('#api-provider')?.value || 'gemini';
+    const jarvisVoice = this.dialog?.querySelector('#jarvis-voice-toggle')?.value || 'enabled';
+    const jarvisSfx = this.dialog?.querySelector('#jarvis-sfx-toggle')?.value || 'enabled';
     
-    setApiKeys({ gemini, openai, openweather, unsplash, model, provider });
+    setApiKeys({ gemini, openai, openweather, unsplash, model, provider, jarvisVoice, jarvisSfx });
     
     // Dispatch custom event so app knows keys changed
     window.dispatchEvent(new CustomEvent('settings-changed'));
@@ -115,6 +117,12 @@ export class SettingsPanel {
 
     const providerSelect = this.dialog?.querySelector('#api-provider');
     if (providerSelect) providerSelect.value = keys.provider || 'gemini';
+
+    const voiceSelect = this.dialog?.querySelector('#jarvis-voice-toggle');
+    if (voiceSelect) voiceSelect.value = keys.jarvisVoice || 'enabled';
+
+    const sfxSelect = this.dialog?.querySelector('#jarvis-sfx-toggle');
+    if (sfxSelect) sfxSelect.value = keys.jarvisSfx || 'enabled';
 
     this._updateProviderFields();
     this.dialog?.showModal();

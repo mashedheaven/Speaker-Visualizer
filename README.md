@@ -1,85 +1,140 @@
-# Speaker Visualizer
+# 🧊 JARVIS — Speaker Visualizer (Mark 85)
 
-Speaker Visualizer is an Electron desktop app that turns spoken prompts into live visual tiles. It listens through your microphone, transcribes speech with Gemini, detects intent, and renders useful cards for weather, places, facts, and brainstorming.
+> *"Sometimes you gotta run before you can walk."* — Tony Stark
 
-## Features
+**JARVIS — Speaker Visualizer** is a real-time, voice-controlled holographic dashboard for macOS and desktop. Powered by Google Gemini and Web Audio telemetry, it transforms spoken commands into dynamic visual cards, speaks responses with a cultured British vocal persona, and features a cinematic Iron Man Arc Reactor HUD interface.
 
-- Real-time microphone capture with a waveform visualizer
-- Gemini-powered speech transcription and intent detection
-- Visual dashboard tiles for:
-  - weather and 5-day forecasts
-  - places and landmarks
-  - facts and short explanations
-  - brainstorming prompts
-- Tile actions for pinning, expanding, and closing results
-- Recent transcript history in the sidebar
-- Local settings dialog for API keys and model selection
+---
 
-## Requirements
+## ✨ Features
 
-- Node.js and npm
-- A Gemini API key
+### 🔮 The Suit (Holographic Interface)
+- **Arc Reactor Core Visualizer**: Audio-reactive 2D canvas engine with a 24-segment frequency ring, counter-rotating telemetry markers, pulsing core orb, and 50 orbiting energy particles.
+- **Ambient HUD Environment**: Background canvas with converging 3D perspective horizon lines, subtle pulsed hexagonal grids, data streams, and corner reticle targeting brackets.
+- **Holographic Materialization**: Cards materialize with glowing laser scan-lines and 3D parallax mouse tilt with dynamic light glare.
+- **Active Arc Reactor Trigger**: The microphone button features a rotating dashed reactor ring and acoustic pulse feedback.
+
+### 🧠 The Brain (Conversational Intelligence & Voice)
+- **JARVIS Vocal Persona (TTS)**: Synthesizes responses using an authentic British accent, delivering concise spoken briefings for every query.
+- **Procedural Acoustic Telemetry**: Synthesized HUD audio cues (activation ping, affirmative chirp, completion chord) via Web Audio API oscillators — zero external MP3 assets.
+- **Wake Word Detection**: Say *"Jarvis"*, *"Hey Jarvis"*, or *"Oh Jarvis"* to activate.
+- **Multi-Turn Context & Pronoun Resolution**: Remembers recent dialogue and entities so follow-ups like *"What about tomorrow?"* or *"Where is it?"* resolve naturally.
+- **Direct HUD Commands**:
+  - *"Jarvis, status report"* — Diagnostics on active modules and core status.
+  - *"Jarvis, clear screen"* — Wipes unpinned tiles with acoustic confirmation.
+  - *"Jarvis, what is this?"* — Explains the newest or active card on screen.
+
+### ⚔️ The Arsenal (8 Active Skills)
+1. 🌤️ **Weather**: Current telemetry, humidity, wind speed, and 5-day forecasts.
+2. 🏛️ **Places & Landmarks**: High-resolution imagery, geographical facts, and summaries.
+3. 📚 **Facts & Knowledge**: Deep explanations rendered in clean formatted markdown.
+4. 💡 **Brainstorm Ideas**: Creative ideation matrices and strategy cards.
+5. ⏱️ **Timer & Countdown**: Live circular SVG countdown gauge with audio alarms.
+6. 🔧 **System Telemetry**: CPU core load, memory heap, battery charge, and Mark 85 reactor status.
+7. 📈 **Market & Crypto**: Real-time asset valuations (BTC, ETH, AAPL, TSLA), deltas, and SVG sparkline charts.
+8. 🗞️ **Intelligence Wire**: Live categorized headline briefings across tech, science, and world news.
+
+### 💾 The Workshop (Persistence & Security)
+- **Tile Persistence**: Pinned and ready tiles automatically restore onto your grid across app restarts.
+- **History Persistence**: Transcript history in the sidebar is preserved across sessions.
+- **Encrypted Key Storage**: API keys are encrypted at rest using Electron `safeStorage` (macOS Keychain).
+- **Native macOS Menu Bar Icon**: High-contrast template Arc Reactor icon that adapts to light & dark menu bars.
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Node.js (v18+) and npm
+- A [Google Gemini API Key](https://aistudio.google.com/apikey) (free)
 - Microphone access
-- Optional OpenWeather API key for weather tiles
-- Optional Unsplash access key for place images
 
-## Getting Started
-
-Install dependencies:
+### Installation
 
 ```bash
+git clone "https://github.com/Gogul-Raj/Speaker-Visualizer.git"
+cd "Speaker Visualizer"
 npm install
 ```
 
-Start the app:
+### Launch
 
 ```bash
 npm start
 ```
 
-On macOS, allow microphone access when prompted. If the prompt does not appear, open System Settings, then Privacy & Security, then Microphone, and allow access for the terminal or app you use to launch Speaker Visualizer.
+*Note on macOS: Grant microphone permissions when prompted in System Settings.*
 
-## API Keys
+---
 
-Open the settings dialog inside the app and add your keys:
+## 🔑 Configuration
 
-- Gemini API key: required for speech transcription, intent detection, facts, and brainstorming
-- OpenWeather API key: required for weather requests
-- Unsplash access key: optional; place tiles fall back to Wikipedia images when it is not set
+Open the **Settings** dialog (<kbd>⚙️</kbd>) inside the application:
 
-Settings are stored locally through Electron app data and browser local storage. Do not commit real API keys to the repository.
+- **Gemini API Key**: Required for speech recognition, intent routing, and intelligence briefings.
+- **OpenWeather API Key**: *(Optional)* For live global weather data.
+- **Unsplash Key**: *(Optional)* For enhanced place photography (falls back to Wikipedia).
+- **Audio Persona**: Toggle JARVIS spoken responses (TTS) and HUD chimes.
 
-## Example Prompts
+All credentials are saved securely via Electron `safeStorage`.
 
-Try saying:
+---
 
-- "What's the weather in Tokyo?"
-- "Tell me about the Taj Mahal."
-- "Explain quantum computing."
-- "Brainstorm ideas for a mobile app."
+## 🎙️ Voice Command Examples
 
-Press `Space` to toggle listening when the focus is not inside a text input. You can also use the microphone button in the header.
+Press <kbd>Space</kbd> or click the Arc Reactor button:
 
-## Project Structure
+- *"Jarvis"* → *"Online and listening, sir."*
+- *"Jarvis, what's the weather in Tokyo?"*
+- *"Jarvis, set a timer for 5 minutes"*
+- *"Jarvis, price of Bitcoin"*
+- *"Jarvis, hardware diagnostics"*
+- *"Jarvis, latest tech news"*
+- *"Jarvis, tell me about the Taj Mahal"*
+- *"Jarvis, brainstorm mobile app concepts"*
+- *"Jarvis, status report"*
+- *"Jarvis, clear screen"*
+
+---
+
+## 📁 Architecture
 
 ```text
-.
-|-- main.js              # Electron main process
-|-- preload.js           # Safe renderer bridge for settings IPC
-|-- index.html           # App shell
-|-- css/                 # Layout, components, variables, and animations
-`-- js/
-    |-- app.js           # App orchestration
-    |-- speech.js        # Audio capture, transcription, and waveform data
-    |-- intent.js        # Gemini intent classification
-    |-- renderer.js      # Tile rendering
-    |-- tileManager.js   # Tile state management
-    |-- settings.js      # Settings dialog behavior
-    `-- skills/          # Weather, place, fact, and brainstorm skills
+Speaker Visualizer/
+├── main.js                  # Electron main process (safeStorage, CSP, native tray)
+├── preload.js               # Context isolation bridge
+├── index.html               # HUD shell & canvas containers
+├── css/
+│   ├── variables.css        # Design tokens, color scales, HUD glow tokens
+│   ├── layout.css           # Grid architecture & canvas overlays
+│   ├── components.css       # Holographic tiles, Arc Reactor mic, gauges, cards
+│   ├── animations.css       # Scanline, disintegration, reactor rotation
+│   └── extra.css            # Interactive prompt chips, scrollbars
+└── js/
+    ├── app.js               # Central coordinator
+    ├── arcReactor.js        # Canvas 2D audio-reactive Arc Reactor visualizer
+    ├── hudBackground.js     # Ambient 3D perspective grid & hex telemetry
+    ├── jarvisVoice.js       # British TTS synthesis & procedural audio chimes
+    ├── conversation.js      # Multi-turn conversational memory & HUD commands
+    ├── intent.js            # Gemini structured intent classifier
+    ├── renderer.js          # Tile lifecycle, 3D parallax tilt & SVG gauges
+    ├── tileManager.js       # Persistent tile state manager (localStorage)
+    ├── speech.js            # Audio capture, VAD, and transcription backends
+    ├── settings.js          # Settings modal & provider controller
+    ├── utils.js             # Event emitter, debouncing, markdown renderer
+    └── skills/
+        ├── weather.js       # OpenWeatherMap integration
+        ├── placeInfo.js     # Wikipedia + Unsplash landmark records
+        ├── generalFact.js   # Knowledge explanation skill
+        ├── brainstorm.js    # Ideation generator
+        ├── timer.js         # Countdown chronometer skill
+        ├── system.js        # Hardware & Mark 85 reactor telemetry
+        ├── finance.js       # Crypto & stock market ticker
+        └── news.js          # Intelligence wire headlines
 ```
 
-## Development Notes
+---
 
-The current `npm test` script is a placeholder and no automated test suite is configured yet.
+## 🛡️ License
 
-The app calls external APIs directly from the renderer process for speech transcription, intent detection, weather, Wikipedia summaries, and optional Unsplash images. Keep that in mind before using production or restricted keys.
+MIT License. Built for voice-to-vision intelligence.

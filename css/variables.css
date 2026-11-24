@@ -72,6 +72,42 @@
   --tile-brainstorm-glow:   0 0 20px rgba(251, 191, 36, 0.20);
   --tile-brainstorm-bg:     rgba(251, 191, 36, 0.04);
 
+  --tile-timer-accent: #f97316;
+  --tile-timer-glow:   0 0 20px rgba(249, 115, 22, 0.25);
+  --tile-timer-bg:     rgba(249, 115, 22, 0.04);
+
+  --tile-system-accent: #06b6d4;
+  --tile-system-glow:   0 0 20px rgba(6, 182, 212, 0.25);
+  --tile-system-bg:     rgba(6, 182, 212, 0.04);
+
+  --tile-finance-accent: #10b981;
+  --tile-finance-glow:   0 0 20px rgba(16, 185, 129, 0.25);
+  --tile-finance-bg:     rgba(16, 185, 129, 0.04);
+
+  --tile-news-accent: #3b82f6;
+  --tile-news-glow:   0 0 20px rgba(59, 130, 246, 0.25);
+  --tile-news-bg:     rgba(59, 130, 246, 0.04);
+
+  --tile-calculator-accent: #ec4899;
+  --tile-calculator-glow:   0 0 20px rgba(236, 72, 153, 0.25);
+  --tile-calculator-bg:     rgba(236, 72, 153, 0.04);
+
+  --tile-music-accent: #8b5cf6;
+  --tile-music-glow:   0 0 20px rgba(139, 92, 246, 0.25);
+  --tile-music-bg:     rgba(139, 92, 246, 0.04);
+
+  --tile-calendar-accent: #0ea5e9;
+  --tile-calendar-glow:   0 0 20px rgba(14, 165, 233, 0.25);
+  --tile-calendar-bg:     rgba(14, 165, 233, 0.04);
+
+  --tile-websearch-accent: #14b8a6;
+  --tile-websearch-glow:   0 0 20px rgba(20, 184, 166, 0.25);
+  --tile-websearch-bg:     rgba(20, 184, 166, 0.04);
+
+  --tile-imagesearch-accent: #f43f5e;
+  --tile-imagesearch-glow:   0 0 20px rgba(244, 63, 94, 0.25);
+  --tile-imagesearch-bg:     rgba(244, 63, 94, 0.04);
+
 
   /* -----------------------------------------------------------------------
      2. TYPOGRAPHY

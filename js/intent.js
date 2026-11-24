@@ -21,9 +21,17 @@ export class IntentDetector extends EventEmitter {
     this._cache = new Cache(5 * 60 * 1000); // 5-minute TTL
     this._isProcessing = false;
     this._tileContext = []; // summaries of currently-visible tiles
+    this._convContext = null; // multi-turn conversation context
 
     // Wait 1.5 s after the last final transcript before calling the LLM
     this._analyze = debounce(this._doAnalyze.bind(this), 1500);
+  }
+
+  /**
+   * Set conversation dialogue history and last entity context
+   */
+  setConversationContext(context) {
+    this._convContext = context;
   }
 
   /**
@@ -102,23 +110,38 @@ export class IntentDetector extends EventEmitter {
       this._tileContext.length > 0
         ? `\nCurrently visible tiles: ${JSON.stringify(this._tileContext)}`
         : '';
+    const dialogueStr = this._convContext?.recentDialogue
+      ? `\nRecent conversation:\n${this._convContext.recentDialogue}`
+      : '';
+    const lastEntityStr = this._convContext?.lastEntity
+      ? `\nLast referenced context: ${JSON.stringify(this._convContext.lastEntity)}`
+      : '';
 
-    const prompt = `You are an intent classifier for a voice-controlled visualization dashboard.
-Analyze the user's speech and extract structured intents.
+    const prompt = `You are JARVIS, an intelligent AI intent classifier for a holographic visualization dashboard.
+Analyze the user's speech and extract structured intents, resolving follow-up queries or pronouns using the recent conversation.
 
-User said: "${text.replace(/"/g, '\"').replace(/\n/g, ' ')}"${contextStr}
+User said: "${text.replace(/"/g, '\"').replace(/\n/g, ' ')}"${contextStr}${dialogueStr}${lastEntityStr}
 
 Classify into one or more intents. Valid types:
-- WEATHER: User wants weather info. Extract location.
+- WEATHER: User wants weather info. Extract location. If follow-up (e.g. "what about tomorrow"), preserve previous location!
 - PLACE: User wants info about a place/landmark/building. Extract the place name.
 - FACT: User wants to learn about a concept/topic. Extract the topic.
 - BRAINSTORM: User wants ideas/suggestions. Extract the topic.
+- TIMER: User wants a timer or countdown (e.g. "timer for 5 minutes", "10 second countdown"). Extract duration in seconds as integer "seconds" (e.g. 300 for 5m) and optional "label".
+- SYSTEM: User wants hardware or system diagnostics (e.g. "system status", "battery", "CPU usage", "hardware telemetry").
+- FINANCE: User wants market, stock, or crypto prices (e.g. "Bitcoin price", "how is Apple stock", "Ethereum", "Tesla"). Extract "asset".
+- NEWS: User wants headlines or current events (e.g. "latest news", "tech news", "headlines"). Extract "topic".
+- CALCULATOR: User wants mathematical computation, percentages, or conversions (e.g. "calculate 42 * 1337", "what is 15 percent of 250", "sqrt of 144"). Extract "expression".
+- MUSIC: User wants to play or search for music/songs/artists (e.g. "play AC/DC", "listen to Back in Black", "play rock"). Extract "track".
+- CALENDAR: User asks for agenda, daily schedule, meetings, or briefings (e.g. "what is on my schedule today", "show calendar", "today's agenda").
+- SEARCH: User wants to search the global web or lookup information (e.g. "search the web for James Webb telescope", "lookup artificial general intelligence"). Extract "query".
+- IMAGE: User wants pictures, photos, or visual gallery of something (e.g. "show me pictures of Mars", "photos of Iron Man armor"). Extract "query".
 
 If the speech doesn't match any intent clearly, return an empty array.
-If it references an existing tile (e.g., "what about tomorrow" when a weather tile is showing), include the context.
+If it is a follow-up or references previous context or existing tiles, resolve the missing parameters using that context.
 
 Respond ONLY with valid JSON, no markdown:
-{"intents": [{"type": "WEATHER|PLACE|FACT|BRAINSTORM", "query": "original user query", "params": {"location": "...", "topic": "...", "place": "..."}}]}`;
+{"intents": [{"type": "WEATHER|PLACE|FACT|BRAINSTORM|TIMER|SYSTEM|FINANCE|NEWS|CALCULATOR|MUSIC|CALENDAR|SEARCH|IMAGE", "query": "original user query", "params": {"location": "...", "topic": "...", "place": "...", "seconds": 60, "asset": "...", "expression": "...", "track": "...", "query": "..."}}]}`;
 
     const url =
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;

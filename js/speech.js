@@ -4,6 +4,7 @@
 // ──────────────────────────────────────────────
 
 import { EventEmitter, getApiKeys } from './utils.js';
+import { getSharedAudioContext } from './audioContext.js';
 
 /**
  * Multi-provider STT engine. Captures audio via MediaRecorder,
@@ -89,7 +90,7 @@ export class SpeechEngine extends EventEmitter {
 
   _setupVAD() {
     try {
-      this._audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      this._audioCtx = getSharedAudioContext();
       this._analyser = this._audioCtx.createAnalyser();
       this._analyser.fftSize = 256;
       this._analyser.smoothingTimeConstant = 0.8;
@@ -264,7 +265,6 @@ export class SpeechEngine extends EventEmitter {
     }
     
     this._vadSource?.disconnect();
-    this._audioCtx?.close().catch(() => {});
     this.stream?.getTracks().forEach(t => t.stop());
     
     this.mediaRecorder = null;
@@ -332,7 +332,7 @@ export class AudioAnalyzer {
     }
     this._stream = stream;
 
-    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    this.audioContext = getSharedAudioContext();
     this.analyser = this.audioContext.createAnalyser();
     this.analyser.fftSize = 256;
     this.analyser.smoothingTimeConstant = 0.8;
@@ -393,7 +393,6 @@ export class AudioAnalyzer {
   stop() {
     this.isActive = false;
     this.source?.disconnect();
-    this.audioContext?.close().catch(() => {});
 
     // Only stop stream tracks if we own them (not shared)
     if (this._ownsStream && this._stream) {

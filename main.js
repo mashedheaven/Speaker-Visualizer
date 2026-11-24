@@ -1,22 +1,44 @@
-const { app, BrowserWindow, globalShortcut, ipcMain, Tray, nativeImage, Menu, systemPreferences, session } = require('electron');
+const { app, BrowserWindow, globalShortcut, ipcMain, Tray, nativeImage, Menu, systemPreferences, session, safeStorage } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
-// ── Settings IPC (async handle pattern) ─────────────────────────
+// ── Encrypted Settings IPC via Electron safeStorage ─────────────────
 const settingsPath = () => path.join(app.getPath('userData'), 'settings.json');
 
 ipcMain.handle('save-settings', (_event, keys) => {
-    fs.writeFileSync(settingsPath(), JSON.stringify(keys, null, 2));
-    return true;
+    try {
+        const jsonStr = JSON.stringify(keys, null, 2);
+        if (safeStorage && safeStorage.isEncryptionAvailable()) {
+            const encrypted = safeStorage.encryptString(jsonStr);
+            fs.writeFileSync(settingsPath(), encrypted);
+        } else {
+            fs.writeFileSync(settingsPath(), jsonStr, 'utf8');
+        }
+        return true;
+    } catch (e) {
+        console.error('Failed to encrypt/save settings:', e);
+        return false;
+    }
 });
 
 ipcMain.handle('load-settings', () => {
     try {
         if (fs.existsSync(settingsPath())) {
-            return JSON.parse(fs.readFileSync(settingsPath(), 'utf8'));
+            const buffer = fs.readFileSync(settingsPath());
+            if (safeStorage && safeStorage.isEncryptionAvailable()) {
+                try {
+                    const decrypted = safeStorage.decryptString(buffer);
+                    return JSON.parse(decrypted);
+                } catch {
+                    // Fallback: file was saved in legacy plaintext
+                    return JSON.parse(buffer.toString('utf8'));
+                }
+            } else {
+                return JSON.parse(buffer.toString('utf8'));
+            }
         }
     } catch (e) {
-        console.error('Failed to load settings:', e);
+        console.error('Failed to load/decrypt settings:', e);
     }
     return null;
 });
@@ -69,16 +91,27 @@ function createWindow() {
 }
 
 function createTray() {
-    const icon = nativeImage.createEmpty();
+    // Arc Reactor SVG icon with setTemplateImage for native macOS dark/light menu bar support
+    const svgIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18">
+      <circle cx="9" cy="9" r="7" stroke="black" stroke-width="1.6" fill="none"/>
+      <circle cx="9" cy="9" r="3.5" stroke="black" stroke-width="1.2" fill="none"/>
+      <circle cx="9" cy="9" r="1.5" fill="black"/>
+      <line x1="9" y1="2" x2="9" y2="4.5" stroke="black" stroke-width="1.2"/>
+      <line x1="9" y1="13.5" x2="9" y2="16" stroke="black" stroke-width="1.2"/>
+      <line x1="2" y1="9" x2="4.5" y2="9" stroke="black" stroke-width="1.2"/>
+      <line x1="13.5" y1="9" x2="16" y2="9" stroke="black" stroke-width="1.2"/>
+    </svg>`;
+    const icon = nativeImage.createFromBuffer(Buffer.from(svgIcon));
+    icon.setTemplateImage(true);
+
     tray = new Tray(icon);
-    tray.setTitle('🎙️ SV');
-    tray.setToolTip('Speaker Visualizer');
+    tray.setToolTip('JARVIS — Speaker Visualizer');
     
     const contextMenu = Menu.buildFromTemplate([
-        { label: 'Show Window', click: () => showWindow() },
-        { label: 'Toggle Mic (⌘⇧V)', click: () => toggleMicFromMain() },
+        { label: 'Show JARVIS HUD', click: () => showWindow() },
+        { label: 'Toggle Voice (⌘⇧V)', click: () => toggleMicFromMain() },
         { type: 'separator' },
-        { label: 'Quit', click: () => { app.isQuiting = true; app.quit(); } }
+        { label: 'Quit JARVIS', click: () => { app.isQuiting = true; app.quit(); } }
     ]);
     
     tray.setContextMenu(contextMenu);
@@ -151,7 +184,8 @@ app.whenReady().then(async () => {
                     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
                     "font-src 'self' https://fonts.gstatic.com; " +
                     "img-src 'self' https: data:; " +
-                    "connect-src 'self' https://generativelanguage.googleapis.com https://api.openweathermap.org https://en.wikipedia.org https://api.unsplash.com https://api.openai.com;"
+                    "media-src 'self' https: blob: data:; " +
+                    "connect-src 'self' https://generativelanguage.googleapis.com https://api.openweathermap.org https://en.wikipedia.org https://api.unsplash.com https://api.openai.com https://api.coingecko.com https://itunes.apple.com https://api.duckduckgo.com;"
                 ]
             }
         });

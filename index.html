@@ -22,6 +22,9 @@
 </head>
 <body>
   <div class="app-container">
+    <!-- Ambient HUD Perspective & Hex Grid Canvas Layer -->
+    <canvas id="hud-bg-canvas" class="hud-bg-canvas"></canvas>
+
     <!-- Header -->
     <header class="header">
       <div class="header__logo">
@@ -38,7 +41,7 @@
             </linearGradient>
           </defs>
         </svg>
-        <h1 class="header__title">Speaker Visualizer</h1>
+        <h1 class="header__title">JARVIS <span style="font-size:0.6em;color:var(--accent-cyan);letter-spacing:0.18em;opacity:0.85">MARK 85</span></h1>
       </div>
       <div class="header__controls">
         <button id="menu-btn" class="btn btn--ghost btn--sm" aria-label="Toggle menu">
@@ -82,13 +85,41 @@
         <div class="sidebar__item" data-skill="brainstorm">
           <span>💡</span> <span>Brainstorm Ideas</span>
         </div>
+        <div class="sidebar__item" data-skill="timer">
+          <span>⏱️</span> <span>Timer &amp; Countdown</span>
+        </div>
+        <div class="sidebar__item" data-skill="system">
+          <span>🔧</span> <span>System Telemetry</span>
+        </div>
+        <div class="sidebar__item" data-skill="finance">
+          <span>📈</span> <span>Market &amp; Crypto</span>
+        </div>
+        <div class="sidebar__item" data-skill="news">
+          <span>🗞️</span> <span>Intelligence Wire</span>
+        </div>
+        <div class="sidebar__item" data-skill="calculator">
+          <span>🧮</span> <span>Calculator &amp; Math</span>
+        </div>
+        <div class="sidebar__item" data-skill="music">
+          <span>🎵</span> <span>Sonic Playback</span>
+        </div>
+        <div class="sidebar__item" data-skill="calendar">
+          <span>📅</span> <span>Strategic Agenda</span>
+        </div>
+        <div class="sidebar__item" data-skill="websearch">
+          <span>🌐</span> <span>Global Web Search</span>
+        </div>
+        <div class="sidebar__item" data-skill="imagesearch">
+          <span>🖼️</span> <span>Visual Gallery</span>
+        </div>
       </div>
       
       <div class="sidebar__section">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <h2 class="sidebar__section-title">History</h2>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-2)">
+          <h2 class="sidebar__section-title" style="margin-bottom:0">History</h2>
           <button id="clear-btn" class="btn btn--ghost btn--sm" title="Clear all tiles">Clear</button>
         </div>
+        <input type="text" id="history-search" class="sidebar__search" placeholder="Filter history &amp; tiles..." />
         <div id="history-list" class="sidebar__history">
           <!-- History items populated by JS -->
         </div>
@@ -111,13 +142,19 @@
             <line x1="32" y1="46" x2="32" y2="52" stroke="var(--text-muted)" stroke-width="2" stroke-linecap="round"/>
           </svg>
         </div>
-        <h2 class="empty-state__title">Start Speaking</h2>
-        <p class="empty-state__subtitle">Click the microphone button or press Space to begin. Try saying things like:</p>
+        <h2 class="empty-state__title">JARVIS is Standing By</h2>
+        <p class="empty-state__subtitle">Click the Arc Reactor or press Space to speak. Try saying things like:</p>
         <div class="empty-state__examples">
-          <span class="empty-state__example">"What's the weather in Tokyo?"</span>
-          <span class="empty-state__example">"Tell me about the Taj Mahal"</span>
-          <span class="empty-state__example">"Explain quantum computing"</span>
-          <span class="empty-state__example">"Brainstorm ideas for a mobile app"</span>
+          <span class="empty-state__example">"Jarvis, what's the weather in Tokyo?"</span>
+          <span class="empty-state__example">"Jarvis, set a timer for 1 minute"</span>
+          <span class="empty-state__example">"Jarvis, price of Bitcoin"</span>
+          <span class="empty-state__example">"Jarvis, hardware diagnostics"</span>
+          <span class="empty-state__example">"Jarvis, latest tech news"</span>
+          <span class="empty-state__example">"Jarvis, explain quantum computing"</span>
+          <span class="empty-state__example">"Jarvis, calculate 15% of 350"</span>
+          <span class="empty-state__example">"Jarvis, play AC/DC Back in Black"</span>
+          <span class="empty-state__example">"Jarvis, show my schedule"</span>
+          <span class="empty-state__example">"Jarvis, status report"</span>
         </div>
       </div>
       
@@ -202,6 +239,25 @@
           <button class="settings__clear-key btn btn--ghost btn--sm" data-target="unsplash-key" title="Clear key">🗑️</button>
         </div>
         <small style="color:var(--text-muted);font-size:var(--text-xs)">Falls back to Wikipedia images if not set</small>
+      </div>
+
+      <div class="settings__divider" style="height:1px;background:var(--glass-border);margin:var(--space-2) 0"></div>
+      <div class="settings__section-title" style="font-size:var(--text-xs);text-transform:uppercase;letter-spacing:0.1em;color:var(--accent-cyan);font-weight:600">JARVIS Audio Persona</div>
+
+      <div class="settings__group">
+        <label class="settings__label" for="jarvis-voice-toggle">Voice Output (TTS)</label>
+        <select id="jarvis-voice-toggle" class="settings__input">
+          <option value="enabled">Enabled (JARVIS speaks responses aloud)</option>
+          <option value="disabled">Disabled (Silent display only)</option>
+        </select>
+      </div>
+
+      <div class="settings__group">
+        <label class="settings__label" for="jarvis-sfx-toggle">HUD Audio Chimes</label>
+        <select id="jarvis-sfx-toggle" class="settings__input">
+          <option value="enabled">Enabled (Holographic acoustic telemetry)</option>
+          <option value="disabled">Disabled</option>
+        </select>
       </div>
     </div>
     <div class="settings__footer">

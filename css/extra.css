@@ -44,21 +44,24 @@
 }
 
 .empty-state__example {
-  padding: var(--space-1) var(--space-3);
-  background: var(--bg-tertiary);
+  padding: var(--space-2) var(--space-4);
+  background: rgba(0, 212, 255, 0.06);
   border-radius: var(--radius-full);
   font-size: var(--text-xs);
-  color: var(--text-secondary);
-  border: 1px solid var(--glass-border);
+  color: var(--accent-cyan);
+  border: 1px solid rgba(0, 212, 255, 0.25);
   transition: all var(--duration-fast) var(--ease-out);
-  cursor: default;
+  cursor: pointer;
+  user-select: none;
+  box-shadow: 0 0 8px rgba(0, 212, 255, 0.1);
 }
 
 .empty-state__example:hover {
-  background: var(--bg-elevated);
+  background: rgba(0, 212, 255, 0.15);
   border-color: var(--accent-cyan);
-  color: var(--text-primary);
-  transform: translateY(-1px);
+  color: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 0 16px rgba(0, 212, 255, 0.35);
 }
 
 /* ---- Setup Prompt ---- */
