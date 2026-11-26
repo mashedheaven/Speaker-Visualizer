@@ -32,13 +32,33 @@ export class EventEmitter {
  */
 export function debounce(fn, ms) {
   let timer = null;
-  return function (...args) {
+  let lastCtx = null;
+  let lastArgs = null;
+
+  const debounced = function (...args) {
+    lastCtx = this;
+    lastArgs = args;
     clearTimeout(timer);
     timer = setTimeout(() => {
       timer = null;
-      fn.apply(this, args);
+      fn.apply(lastCtx, lastArgs);
     }, ms);
   };
+
+  debounced.cancel = () => {
+    clearTimeout(timer);
+    timer = null;
+  };
+
+  debounced.flush = () => {
+    if (timer) {
+      clearTimeout(timer);
+      timer = null;
+      fn.apply(lastCtx, lastArgs);
+    }
+  };
+
+  return debounced;
 }
 
 /**
@@ -299,4 +319,82 @@ function _applyInlineFormatting(parent, text) {
   if (lastIndex < text.length) {
     parent.appendChild(document.createTextNode(text.slice(lastIndex)));
   }
+}
+
+// ──────────────────────────────────────────────
+// Top-layer dialog transition & dismiss helpers
+// ──────────────────────────────────────────────
+
+let _supportsDisplayTransition;
+
+function _canTransitionDisplay() {
+  if (_supportsDisplayTransition !== undefined) return _supportsDisplayTransition;
+  if (!window.CSS?.supports?.('transition-behavior', 'allow-discrete') || !document.body) {
+    return false;
+  }
+  const probe = document.createElement('div');
+  probe.style.cssText = 'transition: display 1s allow-discrete !important; display: block;';
+  document.body.appendChild(probe);
+  getComputedStyle(probe).display;
+  probe.style.display = 'none';
+  _supportsDisplayTransition = getComputedStyle(probe).display === 'block';
+  probe.remove();
+  return _supportsDisplayTransition;
+}
+
+function _supportsTopLayerExit() {
+  return Boolean(window.CSS?.supports?.('overlay', 'auto') && _canTransitionDisplay());
+}
+
+/**
+ * Gracefully close a modal <dialog>, waiting on CSS animations cleanly
+ * on engines lacking full `overlay` + discrete `display` transition support.
+ * @param {HTMLDialogElement} dialog
+ */
+export async function closeTopLayer(dialog) {
+  if (!dialog || !dialog.open) return;
+  if (!_supportsTopLayerExit() && typeof dialog.getAnimations === 'function') {
+    dialog.setAttribute('data-closing', '');
+    const animations = dialog.getAnimations({ subtree: true });
+    if (animations.length > 0) {
+      await Promise.race([
+        Promise.allSettled(animations.map(a => a.finished)),
+        new Promise(r => setTimeout(r, 2000))
+      ]);
+    }
+    if (!dialog.hasAttribute('data-closing')) return;
+    dialog.removeAttribute('data-closing');
+  }
+  if (dialog.open) dialog.close();
+}
+
+/**
+ * Wire progressive outside light-dismiss, smooth cancel handling,
+ * and stale returnValue cleanup on a modal <dialog>.
+ * @param {HTMLDialogElement} dialog
+ */
+export function bindModalDialogDismiss(dialog) {
+  if (!dialog || dialog._modalDismissBound) return;
+  dialog._modalDismissBound = true;
+
+  if (!('closedBy' in HTMLDialogElement.prototype)) {
+    const outside = (e) => {
+      const r = dialog.getBoundingClientRect();
+      return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
+    };
+    let pressedOutside = false;
+    dialog.addEventListener('pointerdown', (e) => { pressedOutside = outside(e); });
+    dialog.addEventListener('pointerup', (e) => {
+      if (pressedOutside && outside(e)) closeTopLayer(dialog);
+    });
+  }
+
+  dialog.addEventListener('cancel', (e) => {
+    e.preventDefault();
+    closeTopLayer(dialog);
+  });
+
+  dialog.addEventListener('close', () => {
+    dialog.returnValue = '';
+  });
 }

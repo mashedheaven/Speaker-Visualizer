@@ -23,19 +23,25 @@ export const FinanceSkill = {
     const cached = cache.get(cacheKey);
     if (cached) return cached;
 
-    // Crypto CoinGecko mapping
+    // Crypto CoinGecko mapping (supports multi-word phrases like "bitcoin price")
     const cryptoMap = {
-      'btc': 'bitcoin',
-      'bitcoin': 'bitcoin',
-      'eth': 'ethereum',
-      'ethereum': 'ethereum',
-      'sol': 'solana',
-      'solana': 'solana',
-      'doge': 'dogecoin',
-      'dogecoin': 'dogecoin'
+      'btc': ['bitcoin', 'BTC'],
+      'bitcoin': ['bitcoin', 'BTC'],
+      'eth': ['ethereum', 'ETH'],
+      'ethereum': ['ethereum', 'ETH'],
+      'sol': ['solana', 'SOL'],
+      'solana': ['solana', 'SOL'],
+      'doge': ['dogecoin', 'DOGE'],
+      'dogecoin': ['dogecoin', 'DOGE'],
+      'ada': ['cardano', 'ADA'],
+      'cardano': ['cardano', 'ADA'],
+      'xrp': ['ripple', 'XRP'],
+      'ripple': ['ripple', 'XRP']
     };
 
-    const cryptoId = cryptoMap[cleanAsset];
+    const cryptoKey = Object.keys(cryptoMap).find(k => new RegExp(`\\b${k}\\b`, 'i').test(cleanAsset));
+    const cryptoEntry = cryptoKey ? cryptoMap[cryptoKey] : null;
+    const cryptoId = cryptoEntry ? cryptoEntry[0] : null;
 
     if (cryptoId) {
       try {
@@ -44,31 +50,33 @@ export const FinanceSkill = {
         if (res.ok) {
           const json = await res.json();
           const data = json[cryptoId];
-          if (data && data.usd) {
+          if (data && typeof data.usd === 'number') {
             const price = data.usd;
             const change = data.usd_24h_change || 0;
             const isPos = change >= 0;
-            const high = price * (1 + Math.abs(change) * 0.008);
-            const low = price * (1 - Math.abs(change) * 0.008);
+            const spread = Math.max(0.015, Math.abs(change) * 0.008);
+            const high = price * (1 + spread);
+            const low = price * (1 - spread);
 
-            // Generate representative 7-point sparkline
+            // Generate representative 7-point sparkline preserving floating precision
             const sparkline = [];
             let current = low;
             const step = (price - low) / 6;
-            for (let i = 0; i < 7; i++) {
-              sparkline.push(Math.round(current + (Math.random() - 0.5) * (price * 0.01)));
+            for (let i = 0; i < 6; i++) {
+              sparkline.push(current + (Math.random() - 0.5) * (price * 0.01));
               current += step;
             }
-            sparkline[6] = price;
+            sparkline.push(price);
 
+            const decimals = price < 1 ? 4 : 2;
             const result = {
-              symbol: cryptoId === 'bitcoin' ? 'BTC' : cryptoId === 'ethereum' ? 'ETH' : cryptoId === 'solana' ? 'SOL' : 'DOGE',
-              name: cryptoId.toUpperCase(),
-              price: `$${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+              symbol: cryptoEntry[1],
+              name: cryptoId.charAt(0).toUpperCase() + cryptoId.slice(1),
+              price: `$${price.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`,
               changePct: `${isPos ? '+' : ''}${change.toFixed(2)}%`,
               isPositive: isPos,
-              high24h: `$${high.toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
-              low24h: `$${low.toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
+              high24h: `$${high.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`,
+              low24h: `$${low.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`,
               sparkline
             };
             cache.set(cacheKey, result);
@@ -80,17 +88,29 @@ export const FinanceSkill = {
       }
     }
 
-    // Default / Stocks dataset (Apple, Tesla, Google, Stark Industries)
+    // Tracked Equities Reference Dataset
     const stockDatabase = {
-      'apple': { symbol: 'AAPL', name: 'Apple Inc.', price: 238.45, change: 1.82 },
-      'aapl': { symbol: 'AAPL', name: 'Apple Inc.', price: 238.45, change: 1.82 },
-      'tesla': { symbol: 'TSLA', name: 'Tesla Inc.', price: 342.10, change: -2.45 },
-      'tsla': { symbol: 'TSLA', name: 'Tesla Inc.', price: 342.10, change: -2.45 },
-      'google': { symbol: 'GOOGL', name: 'Alphabet Inc.', price: 182.30, change: 0.94 },
-      'stark': { symbol: 'STARK', name: 'Stark Industries', price: 1485.00, change: 12.40 }
+      'apple': { symbol: 'AAPL', name: 'Apple Inc. (Ref)', price: 238.45, change: 1.82 },
+      'aapl': { symbol: 'AAPL', name: 'Apple Inc. (Ref)', price: 238.45, change: 1.82 },
+      'tesla': { symbol: 'TSLA', name: 'Tesla Inc. (Ref)', price: 342.10, change: -2.45 },
+      'tsla': { symbol: 'TSLA', name: 'Tesla Inc. (Ref)', price: 342.10, change: -2.45 },
+      'google': { symbol: 'GOOGL', name: 'Alphabet Inc. (Ref)', price: 182.30, change: 0.94 },
+      'googl': { symbol: 'GOOGL', name: 'Alphabet Inc. (Ref)', price: 182.30, change: 0.94 },
+      'alphabet': { symbol: 'GOOGL', name: 'Alphabet Inc. (Ref)', price: 182.30, change: 0.94 },
+      'nvidia': { symbol: 'NVDA', name: 'NVIDIA Corp. (Ref)', price: 138.60, change: 2.35 },
+      'nvda': { symbol: 'NVDA', name: 'NVIDIA Corp. (Ref)', price: 138.60, change: 2.35 },
+      'microsoft': { symbol: 'MSFT', name: 'Microsoft Corp. (Ref)', price: 428.50, change: 0.78 },
+      'msft': { symbol: 'MSFT', name: 'Microsoft Corp. (Ref)', price: 428.50, change: 0.78 },
+      'amazon': { symbol: 'AMZN', name: 'Amazon.com Inc. (Ref)', price: 214.20, change: 1.15 },
+      'amzn': { symbol: 'AMZN', name: 'Amazon.com Inc. (Ref)', price: 214.20, change: 1.15 },
+      'stark': { symbol: 'STARK', name: 'Stark Industries (Sim)', price: 1485.00, change: 12.40 }
     };
 
-    const stock = stockDatabase[cleanAsset] || stockDatabase['apple'];
+    const stockKey = Object.keys(stockDatabase).find(k => new RegExp(`\\b${k}\\b`, 'i').test(cleanAsset));
+    const stock = stockKey ? stockDatabase[stockKey] : null;
+    if (!stock) {
+      throw new Error(`No telemetry feed for "${rawAsset}". Try Bitcoin, Ethereum, Solana, Dogecoin, Apple, Tesla, Google, Nvidia, or Microsoft.`);
+    }
     const isPos = stock.change >= 0;
     const high = stock.price * 1.015;
     const low = stock.price * 0.985;

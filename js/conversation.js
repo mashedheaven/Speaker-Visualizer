@@ -49,7 +49,7 @@ export class ConversationManager extends EventEmitter {
       return { action: 'clear_tiles' };
     }
 
-    if (/^(system\s+)?status(\s+report)?$/i.test(clean) || clean === 'diagnostics') {
+    if (/^status\s+report$/i.test(clean) || clean === 'hud status') {
       return { action: 'status_report' };
     }
 

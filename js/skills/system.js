@@ -24,8 +24,9 @@ export const SystemSkill = {
     if (performance && performance.memory) {
       const usedMB = Math.round(performance.memory.usedJSHeapSize / (1024 * 1024));
       const totalMB = Math.round(performance.memory.jsHeapSizeLimit / (1024 * 1024));
-      memPct = Math.min(95, Math.round((usedMB / totalMB) * 100));
-      memoryUsed = (usedMB / 1024).toFixed(1);
+      memPct = Math.min(95, Math.max(1, Math.round((usedMB / totalMB) * 100)));
+      memoryUsed = (usedMB / 1024).toFixed(2);
+      memoryTotal = (totalMB / 1024).toFixed(1);
     }
 
     // 3. Battery Telemetry

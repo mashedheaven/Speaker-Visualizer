@@ -54,7 +54,7 @@ export class TileManager extends EventEmitter {
       if (Array.isArray(parsed)) {
         // Load in reverse order so unshift restores exact order
         parsed.reverse().forEach(saved => {
-          if (saved && saved.id && saved.status === 'ready') {
+          if (saved && saved.id && saved.status === 'ready' && saved.data != null) {
             this.tiles.unshift(saved);
             this.emit('tileAdded', saved);
           }

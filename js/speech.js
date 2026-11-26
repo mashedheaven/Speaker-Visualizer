@@ -38,6 +38,15 @@ export class SpeechEngine extends EventEmitter {
     this._vadData = null;
     this.hasVoiceActivity = false;
     this._vadCheckInterval = null;
+    this._mutedByTTS = false;
+  }
+
+  /**
+   * Prevent JARVIS's own TTS playback from triggering VAD self-transcription.
+   * @param {boolean} muted
+   */
+  setMutedByTTS(muted) {
+    this._mutedByTTS = !!muted;
   }
 
   static isSupported() {
@@ -100,7 +109,7 @@ export class SpeechEngine extends EventEmitter {
 
       // Check audio levels every 100ms
       this._vadCheckInterval = setInterval(() => {
-        if (!this._analyser) return;
+        if (!this._analyser || this._mutedByTTS) return;
         this._analyser.getByteFrequencyData(this._vadData);
         let sum = 0;
         for (let i = 0; i < this._vadData.length; i++) sum += this._vadData[i];

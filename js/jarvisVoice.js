@@ -23,6 +23,7 @@ export class JarvisVoice extends EventEmitter {
     this.voices = [];
     this.selectedVoice = null;
     this.isSpeaking = false;
+    this._pulseInterval = null;
 
     this._initVoices();
   }
@@ -184,7 +185,11 @@ export class JarvisVoice extends EventEmitter {
     if (!this.synth || !this.options.enabled || !text) return Promise.resolve();
 
     return new Promise((resolve) => {
-      // Cancel any ongoing utterance
+      // Cancel any ongoing utterance and pulse timer
+      if (this._pulseInterval) {
+        clearInterval(this._pulseInterval);
+        this._pulseInterval = null;
+      }
       this.synth.cancel();
 
       const cleanText = text.replace(/[*#_`]/g, '').trim();
@@ -195,16 +200,16 @@ export class JarvisVoice extends EventEmitter {
       utterance.pitch = options.pitch || this.options.pitch;
       utterance.volume = options.volume || this.options.volume;
 
-      let pulseInterval = null;
-
       utterance.onstart = () => {
+        if (this._pulseInterval) clearInterval(this._pulseInterval);
         this.isSpeaking = true;
         this.emit('start', cleanText);
 
         // Generate synthetic audio frequency pulses for the Arc Reactor to dance to
-        pulseInterval = setInterval(() => {
+        this._pulseInterval = setInterval(() => {
           if (!this.isSpeaking) {
-            clearInterval(pulseInterval);
+            clearInterval(this._pulseInterval);
+            this._pulseInterval = null;
             return;
           }
           const simulatedData = new Uint8Array(32);
@@ -217,14 +222,20 @@ export class JarvisVoice extends EventEmitter {
 
       utterance.onend = () => {
         this.isSpeaking = false;
-        if (pulseInterval) clearInterval(pulseInterval);
+        if (this._pulseInterval) {
+          clearInterval(this._pulseInterval);
+          this._pulseInterval = null;
+        }
         this.emit('end');
         resolve();
       };
 
       utterance.onerror = (e) => {
         this.isSpeaking = false;
-        if (pulseInterval) clearInterval(pulseInterval);
+        if (this._pulseInterval) {
+          clearInterval(this._pulseInterval);
+          this._pulseInterval = null;
+        }
         console.warn('SpeechSynthesis error:', e);
         this.emit('end');
         resolve();
@@ -235,6 +246,10 @@ export class JarvisVoice extends EventEmitter {
   }
 
   stop() {
+    if (this._pulseInterval) {
+      clearInterval(this._pulseInterval);
+      this._pulseInterval = null;
+    }
     if (this.synth) {
       this.synth.cancel();
     }
@@ -251,10 +266,11 @@ export class JarvisVoice extends EventEmitter {
     }
 
     const trimmed = rawText.trim();
-    const wakeRegex = /^(?:(?:hey|hi|hello|ok|okay|oh)\s+)?jarvis[\s,.:!?-]*/i;
+    const wakeStartRe = /^(?:(?:hey|hi|hello|ok|okay|yo|oh)\s+)?jarvis\b[\s,.:!?-]*/i;
+    const wakeEndRe = /[\s,.:!?-]+jarvis[.!?]*$/i;
 
-    if (wakeRegex.test(trimmed)) {
-      const clean = trimmed.replace(wakeRegex, '').trim();
+    if (wakeStartRe.test(trimmed)) {
+      const clean = trimmed.replace(wakeStartRe, '').trim();
       return {
         detected: true,
         cleanText: clean,
@@ -262,10 +278,8 @@ export class JarvisVoice extends EventEmitter {
       };
     }
 
-    // Also detect Jarvis anywhere in the sentence as an invocation
-    const inlineMatch = /\bjarvis\b/i.test(trimmed);
-    if (inlineMatch) {
-      const clean = trimmed.replace(/\bjarvis\b[,.:!?-]*/gi, '').trim();
+    if (wakeEndRe.test(trimmed)) {
+      const clean = trimmed.replace(wakeEndRe, '').trim();
       return {
         detected: true,
         cleanText: clean,

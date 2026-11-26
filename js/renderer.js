@@ -1,4 +1,4 @@
-import { renderMarkdown } from './utils.js';
+import { renderMarkdown, bindModalDialogDismiss, closeTopLayer } from './utils.js';
 
 export class TileRenderer {
   constructor(gridElement, tileManager) {
@@ -18,6 +18,10 @@ export class TileRenderer {
     // Add at the beginning of the grid
     this.grid.prepend(el);
     this._tileElements.set(tile.id, el);
+    // Restored persisted tiles (already 'ready' or 'error') must render immediately
+    if (tile.status !== 'loading') {
+      this._updateTile(tile);
+    }
     // Trigger entrance animation
     requestAnimationFrame(() => el.classList.add('animate-tile-enter'));
     this._updateEmptyState();
@@ -32,6 +36,7 @@ export class TileRenderer {
       while (body.firstChild) body.removeChild(body.firstChild); // Clear loading skeletons
       body.appendChild(this._renderTileBody(tile));
     } else if (tile.status === 'error') {
+      el.classList.remove('tile--loading');
       while (body.firstChild) body.removeChild(body.firstChild);
       body.appendChild(this._renderError(tile.error));
     }
@@ -40,13 +45,28 @@ export class TileRenderer {
     if (pinBtn) {
       pinBtn.classList.toggle('tile__action-btn--pinned', tile.pinned);
       pinBtn.textContent = tile.pinned ? '📌' : '📍';
+      pinBtn.title = tile.pinned ? 'Unpin tile' : 'Pin tile';
     }
-    // Handle expanded state
+    // Update expand button state & clear inline parallax transform when expanded
+    const expandBtn = el.querySelector('.tile__expand');
+    if (expandBtn) {
+      expandBtn.textContent = tile.expanded ? '⤡' : '⤢';
+      expandBtn.title = tile.expanded ? 'Collapse tile' : 'Expand tile';
+    }
+    if (tile.expanded) {
+      el.style.transform = '';
+      el.style.removeProperty('--glare-x');
+      el.style.removeProperty('--glare-y');
+    }
     el.classList.toggle('tile--expanded', tile.expanded);
-    this._toggleOverlay(tile.expanded);
+    const anyExpanded = this.tileManager.getTiles().some(t => t.expanded);
+    this._toggleOverlay(anyExpanded);
   }
   
   _removeTile(id) {
+    const anyExpanded = this.tileManager.getTiles().some(t => t.expanded);
+    this._toggleOverlay(anyExpanded);
+
     const el = this._tileElements.get(id);
     if (!el) return;
     el.classList.add('animate-tile-exit');
@@ -66,9 +86,13 @@ export class TileRenderer {
   }
   
   _createTileElement(tile) {
-    const el = document.createElement('div');
+    const el = document.createElement('article');
     el.className = `tile tile--${tile.type} tile--loading`;
     el.dataset.tileId = tile.id;
+
+    el.addEventListener('click', () => {
+      window.app?.setFocusedTile?.(tile.id);
+    });
     
     // Holographic scanline sweep
     const scanline = document.createElement('div');
@@ -85,7 +109,7 @@ export class TileRenderer {
     this._attachParallax(el);
 
     // Header
-    const header = document.createElement('div');
+    const header = document.createElement('header');
     header.className = 'tile__header';
     
     const indicator = document.createElement('div');
@@ -97,12 +121,26 @@ export class TileRenderer {
     
     const actions = document.createElement('div');
     actions.className = 'tile__actions';
+
+    // Brief Aloud button
+    const speakBtn = document.createElement('button');
+    speakBtn.type = 'button';
+    speakBtn.className = 'tile__action-btn tile__speak';
+    speakBtn.textContent = '🔊';
+    speakBtn.title = 'Ask JARVIS to brief this tile';
+    speakBtn.setAttribute('aria-label', `Ask JARVIS to explain ${tile.title}`);
+    speakBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      window.app?.briefTile?.(tile.id);
+    });
     
     // Export Markdown button
     const exportBtn = document.createElement('button');
+    exportBtn.type = 'button';
     exportBtn.className = 'tile__action-btn tile__export';
     exportBtn.textContent = '📋';
     exportBtn.title = 'Copy as Markdown';
+    exportBtn.setAttribute('aria-label', `Copy ${tile.title} as Markdown`);
     exportBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       this._exportTileMarkdown(tile);
@@ -110,9 +148,11 @@ export class TileRenderer {
 
     // Pin button
     const pinBtn = document.createElement('button');
+    pinBtn.type = 'button';
     pinBtn.className = 'tile__action-btn tile__pin';
     pinBtn.textContent = '📍';
     pinBtn.title = 'Pin tile';
+    pinBtn.setAttribute('aria-label', `Pin ${tile.title}`);
     pinBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       this.tileManager.togglePin(tile.id);
@@ -120,25 +160,30 @@ export class TileRenderer {
     
     // Expand button
     const expandBtn = document.createElement('button');
+    expandBtn.type = 'button';
     expandBtn.className = 'tile__action-btn tile__expand';
     expandBtn.textContent = '⤢';
     expandBtn.title = 'Expand tile';
+    expandBtn.setAttribute('aria-label', `Expand ${tile.title}`);
     expandBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       this.tileManager.toggleExpand(tile.id);
+      window.app?.setFocusedTile?.(tile.id);
     });
     
     // Close button
     const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
     closeBtn.className = 'tile__action-btn tile__close';
     closeBtn.textContent = '✕';
     closeBtn.title = 'Close tile';
+    closeBtn.setAttribute('aria-label', `Close ${tile.title}`);
     closeBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       this.tileManager.removeTile(tile.id);
     });
     
-    actions.append(exportBtn, pinBtn, expandBtn, closeBtn);
+    actions.append(speakBtn, exportBtn, pinBtn, expandBtn, closeBtn);
     header.append(indicator, title, actions);
     
     // Body (loading state)
@@ -148,6 +193,24 @@ export class TileRenderer {
     
     el.append(header, body);
     return el;
+  }
+
+  setFocusedTile(id) {
+    this._tileElements.forEach((el, tileId) => {
+      el.classList.toggle('tile--focused', tileId === id);
+    });
+  }
+
+  pulseSpeakingTile(id) {
+    const el = this._tileElements.get(id);
+    if (!el) return;
+    el.classList.remove('tile--speaking');
+    void el.offsetWidth; // restart brief pulse cleanly
+    el.classList.add('tile--speaking');
+    clearTimeout(el._speakingTimer);
+    el._speakingTimer = setTimeout(() => {
+      el.classList.remove('tile--speaking');
+    }, 2600);
   }
   
   _renderLoadingSkeleton(type) {
@@ -282,6 +345,7 @@ export class TileRenderer {
         dayIcon.alt = day.condition || '';
         dayIcon.style.width = '32px';
         const dayTemp = document.createElement('span');
+        dayTemp.className = 'weather__forecast-day-temp';
         dayTemp.textContent = `${Math.round(day.temp)}°`;
         dayEl.append(dayName, dayIcon, dayTemp);
         forecastRow.appendChild(dayEl);
@@ -295,6 +359,8 @@ export class TileRenderer {
   _renderPlace(data) {
     // data: { image, title, summary, facts: [string] }
     const frag = document.createDocumentFragment();
+    const layout = document.createElement('div');
+    layout.className = 'place__layout';
     
     if (data.image) {
       const img = document.createElement('img');
@@ -302,14 +368,18 @@ export class TileRenderer {
       img.src = data.image;
       img.alt = data.title || '';
       img.loading = 'lazy';
-      frag.appendChild(img);
+      img.addEventListener('error', () => { img.style.display = 'none'; });
+      layout.appendChild(img);
     }
+
+    const textCol = document.createElement('div');
+    textCol.className = 'place__body';
     
     if (data.summary) {
       const summary = document.createElement('p');
       summary.className = 'place__summary';
       summary.textContent = data.summary;
-      frag.appendChild(summary);
+      textCol.appendChild(summary);
     }
     
     if (data.facts && data.facts.length > 0) {
@@ -321,8 +391,37 @@ export class TileRenderer {
         chip.textContent = fact;
         factsContainer.appendChild(chip);
       });
-      frag.appendChild(factsContainer);
+      textCol.appendChild(factsContainer);
     }
+
+    if (data.title) {
+      const placeFooter = document.createElement('footer');
+      placeFooter.className = 'place__actions';
+
+      const galleryBtn = document.createElement('button');
+      galleryBtn.type = 'button';
+      galleryBtn.className = 'btn--tell-more';
+      galleryBtn.textContent = '🖼️ View Gallery';
+      galleryBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        window.app?.processText?.(`Show me pictures of ${data.title}`, true);
+      });
+
+      const webBtn = document.createElement('button');
+      webBtn.type = 'button';
+      webBtn.className = 'btn--tell-more';
+      webBtn.textContent = '🌐 Web Dossier';
+      webBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        window.app?.processText?.(`Search the web for ${data.title}`, true);
+      });
+
+      placeFooter.append(galleryBtn, webBtn);
+      textCol.appendChild(placeFooter);
+    }
+
+    layout.appendChild(textCol);
+    frag.appendChild(layout);
     
     return frag;
   }
@@ -341,7 +440,7 @@ export class TileRenderer {
     tellMoreBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       if (window.app?.processText) {
-        window.app.processText(`Tell me more about ${title || 'this'}`);
+        window.app.processText(`Tell me more about ${title || 'this'}`, true);
       }
     });
     container.appendChild(tellMoreBtn);
@@ -360,14 +459,13 @@ export class TileRenderer {
     (data.ideas || []).forEach((idea, i) => {
       const card = document.createElement('div');
       card.className = 'brainstorm__idea';
-      
+
+      const cardHeader = document.createElement('div');
+      cardHeader.className = 'brainstorm__idea-header';
+
       const num = document.createElement('span');
       num.className = 'brainstorm__idea-number';
       num.textContent = `#${i + 1}`;
-      
-      const text = document.createElement('p');
-      text.textContent = idea;
-      text.style.flex = '1';
 
       const starBtn = document.createElement('button');
       starBtn.className = 'idea__star';
@@ -386,7 +484,12 @@ export class TileRenderer {
         }
       });
 
-      card.append(num, text, starBtn);
+      cardHeader.append(num, starBtn);
+
+      const text = document.createElement('p');
+      text.textContent = idea;
+
+      card.append(cardHeader, text);
       container.appendChild(card);
     });
 
@@ -457,20 +560,37 @@ export class TileRenderer {
     container.append(gauge);
 
     const formatTime = (secs) => {
-      const m = Math.floor(secs / 60);
+      const h = Math.floor(secs / 3600);
+      const m = Math.floor((secs % 3600) / 60);
       const s = secs % 60;
+      if (h > 0) {
+        return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+      }
       return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
     };
 
-    let remaining = data.totalSeconds;
-    timeDisplay.textContent = formatTime(remaining);
+    const targetEnd = data.endTime || (Date.now() + data.totalSeconds * 1000);
+    const computeRemaining = () => Math.max(0, Math.ceil((targetEnd - Date.now()) / 1000));
 
-    // Live countdown interval
+    let remaining = computeRemaining();
+    timeDisplay.textContent = formatTime(remaining);
+    if (remaining >= 3600) timeDisplay.classList.add('timer__time--long');
+
+    // Live countdown interval synchronized to wall clock (prevents timer drift)
+    let mounted = false;
     const interval = setInterval(() => {
-      remaining--;
-      if (remaining <= 0) {
-        remaining = 0;
+      if (mounted && !container.isConnected) {
         clearInterval(interval);
+        observer.disconnect();
+        return;
+      }
+      mounted = container.isConnected;
+      remaining = computeRemaining();
+      timeDisplay.classList.toggle('timer__time--long', remaining >= 3600);
+
+      if (remaining <= 0) {
+        clearInterval(interval);
+        observer.disconnect();
         timeDisplay.textContent = '00:00';
         progressCircle.style.strokeDashoffset = `${circumference}`;
         timeDisplay.classList.add('timer__completed');
@@ -483,13 +603,15 @@ export class TileRenderer {
         const offset = circumference * (1 - remaining / data.totalSeconds);
         progressCircle.style.strokeDashoffset = `${offset}`;
       }
-    }, 1000);
+    }, 500);
 
-    // Clean up timer if tile is removed
+    // Clean up timer immediately if tile is removed from grid
     const observer = new MutationObserver(() => {
-      if (!document.body.contains(container)) {
+      if (mounted && !container.isConnected) {
         clearInterval(interval);
         observer.disconnect();
+      } else if (container.isConnected) {
+        mounted = true;
       }
     });
     observer.observe(this.grid, { childList: true });
@@ -498,63 +620,67 @@ export class TileRenderer {
     return frag;
   }
 
+  _createSystemMetricCard(labelText, valueText, pct, fillBackground = '', valueColor = '') {
+    const card = document.createElement('div');
+    card.className = 'system__card';
+
+    const header = document.createElement('div');
+    header.className = 'system__card-header';
+
+    const label = document.createElement('span');
+    label.className = 'system__card-label';
+    label.textContent = labelText;
+
+    const value = document.createElement('span');
+    value.className = 'system__card-value';
+    value.textContent = valueText;
+    if (valueColor) value.style.color = valueColor;
+
+    header.append(label, value);
+
+    const track = document.createElement('div');
+    track.className = 'system__bar-track';
+
+    const fill = document.createElement('div');
+    fill.className = 'system__bar-fill';
+    const clampedPct = Math.max(0, Math.min(100, Number(pct) || 0));
+    fill.style.width = `${clampedPct}%`;
+    if (fillBackground) fill.style.background = fillBackground;
+
+    track.appendChild(fill);
+    card.append(header, track);
+    return card;
+  }
+
   _renderSystem(data) {
     // data: { cpu: {cores, loadPct}, memory: {usedGB, totalGB, pct}, battery: {level, charging}, reactor: {output, temp, status} }
     const frag = document.createDocumentFragment();
     const grid = document.createElement('div');
     grid.className = 'system__grid';
 
-    // 1. CPU
-    const cpuCard = document.createElement('div');
-    cpuCard.className = 'system__card';
-    cpuCard.innerHTML = `
-      <div class="system__card-header">
-        <span class="system__card-label">CPU (${data.cpu.cores} Cores)</span>
-        <span class="system__card-value">${data.cpu.loadPct}%</span>
-      </div>
-      <div class="system__bar-track">
-        <div class="system__bar-fill" style="width: ${data.cpu.loadPct}%"></div>
-      </div>
-    `;
-
-    // 2. Memory
-    const memCard = document.createElement('div');
-    memCard.className = 'system__card';
-    memCard.innerHTML = `
-      <div class="system__card-header">
-        <span class="system__card-label">Memory</span>
-        <span class="system__card-value">${data.memory.usedGB} / ${data.memory.totalGB} GB</span>
-      </div>
-      <div class="system__bar-track">
-        <div class="system__bar-fill" style="width: ${data.memory.pct}%"></div>
-      </div>
-    `;
-
-    // 3. Battery
-    const batCard = document.createElement('div');
-    batCard.className = 'system__card';
-    batCard.innerHTML = `
-      <div class="system__card-header">
-        <span class="system__card-label">Power ${data.battery.charging ? '⚡ Charging' : '🔋 Battery'}</span>
-        <span class="system__card-value">${data.battery.level}%</span>
-      </div>
-      <div class="system__bar-track">
-        <div class="system__bar-fill" style="width: ${data.battery.level}%; background: ${data.battery.level < 20 ? '#ef4444' : 'linear-gradient(90deg, #10b981, #34d399)'}"></div>
-      </div>
-    `;
-
-    // 4. Arc Reactor Core
-    const coreCard = document.createElement('div');
-    coreCard.className = 'system__card';
-    coreCard.innerHTML = `
-      <div class="system__card-header">
-        <span class="system__card-label">Arc Core Output</span>
-        <span class="system__card-value" style="color:#00d4ff">${data.reactor.output}%</span>
-      </div>
-      <div class="system__bar-track">
-        <div class="system__bar-fill" style="width: ${data.reactor.output}%; background: linear-gradient(90deg, #00d4ff, #a855f7)"></div>
-      </div>
-    `;
+    const cpuCard = this._createSystemMetricCard(
+      `CPU (${data.cpu.cores} Cores)`,
+      `${data.cpu.loadPct}%`,
+      data.cpu.loadPct
+    );
+    const memCard = this._createSystemMetricCard(
+      'Memory',
+      `${data.memory.usedGB} / ${data.memory.totalGB} GB`,
+      data.memory.pct
+    );
+    const batCard = this._createSystemMetricCard(
+      `Power ${data.battery.charging ? '⚡ Charging' : '🔋 Battery'}`,
+      `${data.battery.level}%`,
+      data.battery.level,
+      data.battery.level < 20 ? '#ef4444' : 'linear-gradient(90deg, #10b981, #34d399)'
+    );
+    const coreCard = this._createSystemMetricCard(
+      'Arc Core Output',
+      `${data.reactor.output}%`,
+      data.reactor.output,
+      'linear-gradient(90deg, #00d4ff, #a855f7)',
+      '#00d4ff'
+    );
 
     grid.append(cpuCard, memCard, batCard, coreCard);
     frag.appendChild(grid);
@@ -569,10 +695,15 @@ export class TileRenderer {
 
     const header = document.createElement('div');
     header.className = 'finance__header';
-    header.innerHTML = `
-      <h4 style="font-size:var(--text-base);font-weight:600;color:var(--text-primary)">${data.name}</h4>
-      <span class="finance__symbol">${data.symbol}</span>
-    `;
+
+    const nameHeading = document.createElement('h4');
+    nameHeading.style.cssText = 'font-size:var(--text-base);font-weight:600;color:var(--text-primary)';
+    nameHeading.textContent = data.name;
+
+    const symSpan = document.createElement('span');
+    symSpan.className = 'finance__symbol';
+    symSpan.textContent = data.symbol;
+    header.append(nameHeading, symSpan);
 
     const priceRow = document.createElement('div');
     priceRow.className = 'finance__price-row';
@@ -594,7 +725,7 @@ export class TileRenderer {
 
     if (data.sparkline && data.sparkline.length > 1) {
       const min = Math.min(...data.sparkline);
-      const max = Math.max(...data.sparkline) || 1;
+      const max = Math.max(...data.sparkline);
       const range = (max - min) || 1;
       const step = 280 / (data.sparkline.length - 1);
 
@@ -616,10 +747,20 @@ export class TileRenderer {
 
     const stats = document.createElement('div');
     stats.className = 'finance__stats';
-    stats.innerHTML = `
-      <span>24h High: <strong>${data.high24h}</strong></span>
-      <span>24h Low: <strong>${data.low24h}</strong></span>
-    `;
+
+    const highSpan = document.createElement('span');
+    highSpan.textContent = '24h High: ';
+    const highStrong = document.createElement('strong');
+    highStrong.textContent = data.high24h;
+    highSpan.appendChild(highStrong);
+
+    const lowSpan = document.createElement('span');
+    lowSpan.textContent = '24h Low: ';
+    const lowStrong = document.createElement('strong');
+    lowStrong.textContent = data.low24h;
+    lowSpan.appendChild(lowStrong);
+
+    stats.append(highSpan, lowSpan);
 
     main.append(header, priceRow, sparklineSvg, stats);
     frag.appendChild(main);
@@ -635,13 +776,25 @@ export class TileRenderer {
     (data.articles || []).forEach(art => {
       const item = document.createElement('div');
       item.className = 'news__item';
-      item.innerHTML = `
-        <div class="news__header">
-          <span class="news__source">${art.source}</span>
-          <span class="news__time">${art.time}</span>
-        </div>
-        <div class="news__title">${art.title}</div>
-      `;
+
+      const artHeader = document.createElement('div');
+      artHeader.className = 'news__header';
+
+      const src = document.createElement('span');
+      src.className = 'news__source';
+      src.textContent = art.source;
+
+      const time = document.createElement('span');
+      time.className = 'news__time';
+      time.textContent = art.time;
+
+      artHeader.append(src, time);
+
+      const title = document.createElement('div');
+      title.className = 'news__title';
+      title.textContent = art.title;
+
+      item.append(artHeader, title);
       list.appendChild(item);
     });
 
@@ -696,6 +849,7 @@ export class TileRenderer {
       img.src = data.albumArt;
       img.alt = data.title;
       img.loading = 'lazy';
+      img.addEventListener('error', () => { img.style.display = 'none'; });
       card.appendChild(img);
     }
 
@@ -722,8 +876,14 @@ export class TileRenderer {
       const audio = document.createElement('audio');
       audio.className = 'music__audio-ctrl';
       audio.controls = true;
+      audio.preload = 'none';
       audio.src = data.previewUrl;
       container.appendChild(audio);
+    } else {
+      const note = document.createElement('div');
+      note.className = 'music__no-preview';
+      note.textContent = 'Offline track metadata — audio stream unavailable';
+      container.appendChild(note);
     }
 
     frag.appendChild(container);
@@ -736,7 +896,12 @@ export class TileRenderer {
     
     const header = document.createElement('div');
     header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-2);font-size:var(--text-xs);color:var(--text-muted);font-family:var(--font-mono)';
-    header.innerHTML = `<span>📅 ${data.date || 'Today'}</span><span>${data.events?.length || 0} Briefings</span>`;
+
+    const dateSpan = document.createElement('span');
+    dateSpan.textContent = `📅 ${data.date || 'Today'}`;
+    const countSpan = document.createElement('span');
+    countSpan.textContent = `${data.events?.length || 0} Briefings`;
+    header.append(dateSpan, countSpan);
 
     const timeline = document.createElement('div');
     timeline.className = 'cal__timeline';
@@ -761,6 +926,15 @@ export class TileRenderer {
     return frag;
   }
 
+  _isSafeHttpUrl(rawUrl) {
+    try {
+      const parsed = new URL(rawUrl);
+      return parsed.protocol === 'https:' || parsed.protocol === 'http:';
+    } catch {
+      return false;
+    }
+  }
+
   _renderWebSearch(data) {
     // data: { query, results: [{ title, snippet, url, source }] }
     const frag = document.createDocumentFragment();
@@ -768,21 +942,25 @@ export class TileRenderer {
     list.className = 'websearch__list';
 
     (data.results || []).forEach(res => {
-      const card = document.createElement('a');
+      const hasValidUrl = this._isSafeHttpUrl(res.url);
+      const card = document.createElement(hasValidUrl ? 'a' : 'div');
       card.className = 'websearch__card';
-      card.href = res.url || '#';
-      card.target = '_blank';
-      card.rel = 'noopener noreferrer';
-      card.addEventListener('click', (e) => {
-        if (window.electronAPI?.openExternal && res.url) {
-          e.preventDefault();
-          window.electronAPI.openExternal(res.url);
-        }
-      });
+
+      if (hasValidUrl) {
+        card.href = res.url;
+        card.target = '_blank';
+        card.rel = 'noopener noreferrer';
+        card.addEventListener('click', (e) => {
+          if (window.electronAPI?.openExternal) {
+            e.preventDefault();
+            window.electronAPI.openExternal(res.url);
+          }
+        });
+      }
 
       const title = document.createElement('span');
       title.className = 'websearch__card-title';
-      title.textContent = `${res.title} ↗`;
+      title.textContent = hasValidUrl ? `${res.title} ↗` : res.title;
 
       const snippet = document.createElement('span');
       snippet.className = 'websearch__card-snippet';
@@ -803,17 +981,21 @@ export class TileRenderer {
     grid.className = 'imagesearch__grid';
 
     (data.images || []).forEach(imgData => {
-      const item = document.createElement('div');
+      const item = document.createElement('button');
+      item.type = 'button';
       item.className = 'imagesearch__item';
+      item.setAttribute('aria-label', `Inspect image: ${imgData.title || data.query}`);
 
       const img = document.createElement('img');
       img.className = 'imagesearch__img';
       img.src = imgData.thumb || imgData.url;
       img.alt = imgData.title || data.query;
       img.loading = 'lazy';
+      img.addEventListener('error', () => { item.style.display = 'none'; });
 
-      item.addEventListener('click', () => {
-        window.open(imgData.url, '_blank');
+      item.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this._openImageLightbox(imgData, data.query);
       });
 
       item.appendChild(img);
@@ -822,6 +1004,69 @@ export class TileRenderer {
 
     frag.appendChild(grid);
     return frag;
+  }
+
+  _openImageLightbox(imgData, query) {
+    let dialog = document.getElementById('image-lightbox');
+    if (!dialog) {
+      dialog = document.createElement('dialog');
+      dialog.id = 'image-lightbox';
+      dialog.className = 'image-lightbox';
+      dialog.setAttribute('closedby', 'any');
+      dialog.setAttribute('aria-labelledby', 'image-lightbox-title');
+      document.body.appendChild(dialog);
+      bindModalDialogDismiss(dialog);
+    }
+
+    while (dialog.firstChild) dialog.removeChild(dialog.firstChild);
+
+    const frame = document.createElement('div');
+    frame.className = 'image-lightbox__frame';
+
+    const srTitle = document.createElement('h1');
+    srTitle.id = 'image-lightbox-title';
+    srTitle.className = 'visually-hidden';
+    srTitle.textContent = imgData.title || query || 'Visual Preview';
+
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.autofocus = true;
+    closeBtn.className = 'btn btn--ghost btn--sm image-lightbox__close';
+    closeBtn.textContent = '✕';
+    closeBtn.title = 'Close preview';
+    closeBtn.setAttribute('aria-label', 'Close image preview');
+    closeBtn.addEventListener('click', () => closeTopLayer(dialog));
+
+    const img = document.createElement('img');
+    img.className = 'image-lightbox__img';
+    img.src = imgData.url || imgData.thumb;
+    img.alt = imgData.title || query || '';
+
+    const footer = document.createElement('div');
+    footer.className = 'image-lightbox__footer';
+
+    const caption = document.createElement('div');
+    caption.className = 'imagesearch__caption';
+    caption.textContent = `${imgData.title || query} — ${imgData.author || 'Archive'}`;
+
+    footer.appendChild(caption);
+
+    if (this._isSafeHttpUrl(imgData.url)) {
+      const openBtn = document.createElement('button');
+      openBtn.type = 'button';
+      openBtn.className = 'btn btn--secondary btn--sm';
+      openBtn.textContent = 'Open Original ↗';
+      openBtn.addEventListener('click', () => {
+        if (window.electronAPI?.openExternal) {
+          window.electronAPI.openExternal(imgData.url);
+        }
+      });
+      footer.appendChild(openBtn);
+    }
+
+    frame.append(srTitle, closeBtn, img, footer);
+    dialog.appendChild(frame);
+    dialog.showModal();
   }
 
   _exportTileMarkdown(tile) {

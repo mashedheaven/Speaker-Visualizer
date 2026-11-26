@@ -215,7 +215,7 @@
 
   --header-height:    64px;
   --sidebar-width:    280px;
-  --transcript-height: 80px;
+  --transcript-height: 88px;
   --tile-min-width:   320px;
   --tile-gap:         var(--space-4);
 }

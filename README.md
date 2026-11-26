@@ -24,19 +24,25 @@
   - *"Jarvis, clear screen"* — Wipes unpinned tiles with acoustic confirmation.
   - *"Jarvis, what is this?"* — Explains the newest or active card on screen.
 
-### ⚔️ The Arsenal (8 Active Skills)
+### ⚔️ The Arsenal (13 Active Skills)
 1. 🌤️ **Weather**: Current telemetry, humidity, wind speed, and 5-day forecasts.
 2. 🏛️ **Places & Landmarks**: High-resolution imagery, geographical facts, and summaries.
-3. 📚 **Facts & Knowledge**: Deep explanations rendered in clean formatted markdown.
-4. 💡 **Brainstorm Ideas**: Creative ideation matrices and strategy cards.
+3. 📚 **Facts & Knowledge**: Deep explanations rendered in clean formatted markdown with one-click *"⚡ Tell me more"* follow-ups.
+4. 💡 **Brainstorm Ideas**: Creative ideation cards with interactive star favorites and clipboard export.
 5. ⏱️ **Timer & Countdown**: Live circular SVG countdown gauge with audio alarms.
 6. 🔧 **System Telemetry**: CPU core load, memory heap, battery charge, and Mark 85 reactor status.
-7. 📈 **Market & Crypto**: Real-time asset valuations (BTC, ETH, AAPL, TSLA), deltas, and SVG sparkline charts.
+7. 📈 **Market & Crypto**: Real-time crypto valuations (CoinGecko) & tracked equities, deltas, and SVG sparkline charts.
 8. 🗞️ **Intelligence Wire**: Live categorized headline briefings across tech, science, and world news.
+9. 🧮 **Calculator & Math**: CSP-safe expression evaluation, percentages, roots, and step breakdowns.
+10. 🎵 **Sonic Playback**: Apple iTunes track search with album art and live audio preview streaming.
+11. 📅 **Strategic Agenda**: Vertical daily timeline with urgency markers.
+12. 🌐 **Global Web Search**: DuckDuckGo & encyclopedic search cards with verified external links.
+13. 🖼️ **Visual Gallery**: Unsplash & Wikimedia image grid with an in-app holographic lightbox.
 
-### 💾 The Workshop (Persistence & Security)
+### 💾 The Workshop (Persistence, Export & Security)
 - **Tile Persistence**: Pinned and ready tiles automatically restore onto your grid across app restarts.
-- **History Persistence**: Transcript history in the sidebar is preserved across sessions.
+- **History Persistence & Search Filter**: Transcript history in the sidebar is preserved across sessions with real-time filtering across history items and HUD tiles.
+- **Markdown Tile Export**: One-click clipboard copy (`📋`) on every tile card.
 - **Encrypted Key Storage**: API keys are encrypted at rest using Electron `safeStorage` (macOS Keychain).
 - **Native macOS Menu Bar Icon**: High-contrast template Arc Reactor icon that adapts to light & dark menu bars.
 
@@ -113,6 +119,7 @@ Speaker Visualizer/
 └── js/
     ├── app.js               # Central coordinator
     ├── arcReactor.js        # Canvas 2D audio-reactive Arc Reactor visualizer
+    ├── audioContext.js      # Shared Web Audio singleton across speech/HUD audio
     ├── hudBackground.js     # Ambient 3D perspective grid & hex telemetry
     ├── jarvisVoice.js       # British TTS synthesis & procedural audio chimes
     ├── conversation.js      # Multi-turn conversational memory & HUD commands
@@ -130,7 +137,12 @@ Speaker Visualizer/
         ├── timer.js         # Countdown chronometer skill
         ├── system.js        # Hardware & Mark 85 reactor telemetry
         ├── finance.js       # Crypto & stock market ticker
-        └── news.js          # Intelligence wire headlines
+        ├── news.js          # Intelligence wire headlines
+        ├── calculator.js    # CSP-safe mathematical expression evaluator
+        ├── music.js         # iTunes audio search & preview playback
+        ├── calendar.js      # Daily strategic timeline agenda
+        ├── webSearch.js     # DuckDuckGo & Wikipedia search results
+        └── imageSearch.js   # Unsplash & Wikimedia gallery + lightbox
 ```
 
 ---

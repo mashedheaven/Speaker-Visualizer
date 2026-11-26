@@ -1,6 +1,23 @@
-const { app, BrowserWindow, globalShortcut, ipcMain, Tray, nativeImage, Menu, systemPreferences, session, safeStorage } = require('electron');
+const { app, BrowserWindow, globalShortcut, ipcMain, Tray, nativeImage, Menu, systemPreferences, session, safeStorage, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
+
+function isSafeExternalUrl(rawUrl) {
+    try {
+        const parsed = new URL(rawUrl);
+        return parsed.protocol === 'https:' || parsed.protocol === 'http:';
+    } catch {
+        return false;
+    }
+}
+
+// ── External Link Handler (validated http/https only) ────────────────
+ipcMain.handle('open-external', (_event, url) => {
+    if (typeof url === 'string' && isSafeExternalUrl(url)) {
+        return shell.openExternal(url);
+    }
+    return false;
+});
 
 // ── Encrypted Settings IPC via Electron safeStorage ─────────────────
 const settingsPath = () => path.join(app.getPath('userData'), 'settings.json');
@@ -75,6 +92,13 @@ function createWindow() {
 
     mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
     
+    mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+        if (isSafeExternalUrl(url)) {
+            shell.openExternal(url);
+        }
+        return { action: 'deny' };
+    });
+
     mainWindow.loadFile('index.html');
 
     // Hide to tray on close instead of quitting

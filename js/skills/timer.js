@@ -12,15 +12,29 @@ export const TimerSkill = {
   },
 
   async execute(intent) {
-    let seconds = 60; // Default 1 minute
+    let seconds = 0;
     let label = 'Timer';
 
-    if (intent.params?.seconds) {
-      seconds = parseInt(intent.params.seconds, 10);
-    } else if (intent.params?.duration) {
-      seconds = this.parseDuration(intent.params.duration);
-    } else if (intent.query) {
-      seconds = this.parseDuration(intent.query);
+    const rawSeconds = intent.params?.seconds;
+    if (rawSeconds !== undefined && rawSeconds !== null && rawSeconds !== '') {
+      const numeric = Number(rawSeconds);
+      if (Number.isFinite(numeric) && numeric > 0) {
+        seconds = Math.round(numeric);
+      } else {
+        seconds = this._extractDuration(String(rawSeconds));
+      }
+    }
+
+    if (seconds <= 0 && intent.params?.duration) {
+      seconds = this._extractDuration(String(intent.params.duration));
+    }
+
+    if (seconds <= 0 && intent.query) {
+      seconds = this._extractDuration(intent.query);
+    }
+
+    if (seconds <= 0) {
+      seconds = 60; // Default 1 minute
     }
 
     if (intent.params?.label) {
@@ -40,13 +54,13 @@ export const TimerSkill = {
     };
   },
 
-  parseDuration(text) {
+  _extractDuration(text) {
     let total = 0;
-    const str = text.toLowerCase();
+    const str = String(text).toLowerCase();
 
-    const hours = str.match(/(\d+)\s*(?:hour|hr|h)/);
-    const minutes = str.match(/(\d+)\s*(?:minute|min|m)/);
-    const seconds = str.match(/(\d+)\s*(?:second|sec|s)/);
+    const hours = str.match(/(\d+)\s*(?:hours?|hrs?|h)\b/);
+    const minutes = str.match(/(\d+)\s*(?:minutes?|mins?|m)\b/);
+    const seconds = str.match(/(\d+)\s*(?:seconds?|secs?|s)\b/);
 
     if (hours) total += parseInt(hours[1], 10) * 3600;
     if (minutes) total += parseInt(minutes[1], 10) * 60;
@@ -57,11 +71,16 @@ export const TimerSkill = {
       const bareNumber = str.match(/\b(\d+)\b/);
       if (bareNumber) {
         const val = parseInt(bareNumber[1], 10);
-        // Default to minutes if < 60, otherwise seconds
+        // Default to minutes if <= 10, otherwise seconds
         total = val <= 10 ? val * 60 : val;
       }
     }
 
+    return total;
+  },
+
+  parseDuration(text) {
+    const total = this._extractDuration(text);
     return total > 0 ? total : 60;
   }
 };

@@ -16,7 +16,7 @@ export const ImageSearchSkill = {
   },
 
   async execute(intent) {
-    const rawQuery = intent.params?.query || intent.query?.replace(/show me pictures of|pictures of|photos of|image of|images of/gi, '').trim() || 'Iron Man armor';
+    const rawQuery = intent.params?.query || intent.query?.replace(/\b(?:show me pictures of|show me images of|show me photos of|pictures of|photos of|images of|image of|pics of)\b/gi, '').trim() || 'Iron Man armor';
     const query = rawQuery.length > 1 ? rawQuery : 'Iron Man';
 
     const cacheKey = `img:${query.toLowerCase()}`;
@@ -49,21 +49,21 @@ export const ImageSearchSkill = {
       }
     }
 
-    // 2. Wikipedia Media API fallback
+    // 2. Wikipedia PageImages Search fallback (fetches real lead photographs instead of article UI SVGs)
     try {
-      const wikiUrl = `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(query)}&generator=images&gimlimit=4&prop=imageinfo&iiprop=url&format=json&origin=*`;
+      const wikiUrl = `https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(query)}&gsrlimit=6&prop=pageimages&piprop=original|thumbnail&pithumbsize=600&format=json&origin=*`;
       const res = await fetch(wikiUrl);
       if (res.ok) {
         const json = await res.json();
         const pages = json.query?.pages;
         if (pages) {
           const images = Object.values(pages)
-            .map(p => p.imageinfo?.[0]?.url)
-            .filter(url => url && !url.endsWith('.svg') && !url.endsWith('.ogg'))
-            .map(url => ({
-              url,
-              thumb: url,
-              title: query,
+            .sort((a, b) => (a.index || 0) - (b.index || 0))
+            .filter(p => (p.thumbnail?.source || p.original?.source) && !/\.svg$/i.test(p.original?.source || ''))
+            .map(p => ({
+              url: p.original?.source || p.thumbnail.source,
+              thumb: p.thumbnail?.source || p.original.source,
+              title: p.title || query,
               author: 'Wikimedia Commons'
             }));
 

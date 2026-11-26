@@ -36,10 +36,11 @@ export class IntentDetector extends EventEmitter {
 
   /**
    * Append a final transcript segment.  The debounced analysis will
-   * fire once the user stops speaking for 1.5 s.
+   * fire once the user stops speaking for 1.5 s, unless `immediate` is true.
    * @param {string} text
+   * @param {boolean} [immediate=false]
    */
-  addTranscript(text) {
+  addTranscript(text, immediate = false) {
     if (!text.trim()) return;
     this._buffer += ' ' + text.trim();
     // Cap buffer to prevent unbounded growth during continuous speech
@@ -47,6 +48,9 @@ export class IntentDetector extends EventEmitter {
       this._buffer = this._buffer.slice(-500);
     }
     this._analyze();
+    if (immediate) {
+      this._analyze.flush();
+    }
   }
 
   /**
@@ -72,13 +76,22 @@ export class IntentDetector extends EventEmitter {
     const cached = this._cache.get(cacheKey);
     if (cached) {
       cached.forEach(intent => this.emit('intent', intent));
+      this.emit('processing', false);
       return;
     }
 
-    // ── API key check ──
+    // ── API key check (with deterministic local offline routing for utility skills) ──
     const keys = getApiKeys();
     if (!keys.gemini) {
-      this.emit('error', 'Gemini API key not set. Open Settings to add it.');
+      const localIntents = this._fallbackLocalIntent(text);
+      if (localIntents.length > 0) {
+        this._cache.set(cacheKey, localIntents);
+        localIntents.forEach(intent => this.emit('intent', intent));
+        this.emit('processing', false);
+        return;
+      }
+      this.emit('processing', false);
+      this.emit('error', 'Gemini API key required for open-ended queries & voice STT. Add it in Settings.');
       return;
     }
 
@@ -153,7 +166,7 @@ Respond ONLY with valid JSON, no markdown:
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
           temperature: 0.1,
-          maxOutputTokens: 256,
+          maxOutputTokens: 384,
           responseMimeType: 'application/json',
         },
       }),
@@ -165,15 +178,59 @@ Respond ONLY with valid JSON, no markdown:
     }
 
     const data = await response.json();
-    const responseText =
+    const rawText =
       data.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+    const responseText = rawText.replace(/^```(?:json)?\s*|\s*```$/gi, '').trim();
 
     try {
       const parsed = JSON.parse(responseText);
-      return parsed.intents || [];
+      return Array.isArray(parsed.intents) ? parsed.intents : [];
     } catch {
-      console.warn('Failed to parse Gemini response:', responseText);
+      console.warn('Failed to parse Gemini response:', rawText);
       return [];
     }
+  }
+
+  /**
+   * Deterministic offline/no-key intent classifier so utility and REST-backed skills
+   * work immediately on first launch before configuring a Gemini API key.
+   * @private
+   */
+  _fallbackLocalIntent(text) {
+    const q = text.trim();
+    const lower = q.toLowerCase();
+
+    if (/\b(?:timer|countdown|alarm)\b/i.test(lower)) {
+      return [{ type: 'TIMER', query: q, params: { duration: q } }];
+    }
+    if (/\b(?:system|diagnostics|hardware|battery|cpu|memory)\b/i.test(lower)) {
+      return [{ type: 'SYSTEM', query: q, params: {} }];
+    }
+    if (/\b(?:schedule|calendar|agenda|briefings?|meetings?)\b/i.test(lower)) {
+      return [{ type: 'CALENDAR', query: q, params: {} }];
+    }
+    if (/\b(?:bitcoin|btc|ethereum|eth|solana|sol|dogecoin|doge|cardano|ada|xrp|ripple|apple|aapl|tesla|tsla|google|googl|nvidia|nvda|microsoft|msft|amazon|amzn|stark|price|stock)\b/i.test(lower)) {
+      return [{ type: 'FINANCE', query: q, params: { asset: q } }];
+    }
+    if (/\b(?:calculate|compute|solve|sqrt|square root|percent)\b/i.test(lower) || /^\s*-?\d+(?:\.\d+)?\s*[+\-*/^%×÷]\s*-?\d+/.test(lower)) {
+      return [{ type: 'CALCULATOR', query: q, params: { expression: q } }];
+    }
+    if (/\b(?:play|listen to|music|song|track)\b/i.test(lower)) {
+      return [{ type: 'MUSIC', query: q, params: { track: q } }];
+    }
+    if (/\b(?:pictures? of|photos? of|images? of|pics? of|visual gallery)\b/i.test(lower)) {
+      return [{ type: 'IMAGE', query: q, params: { query: q } }];
+    }
+    if (/\b(?:search|lookup|google)\b/i.test(lower)) {
+      return [{ type: 'SEARCH', query: q, params: { query: q } }];
+    }
+    if (/\b(?:news|headlines|updates)\b/i.test(lower)) {
+      return [{ type: 'NEWS', query: q, params: { topic: q } }];
+    }
+    const placeMatch = q.match(/\b(?:tell me about|where is|information on|info about)\s+(?:the\s+)?(.+)$/i);
+    if (placeMatch) {
+      return [{ type: 'PLACE', query: q, params: { place: placeMatch[1].replace(/[?.!]+$/, '').trim() } }];
+    }
+    return [];
   }
 }

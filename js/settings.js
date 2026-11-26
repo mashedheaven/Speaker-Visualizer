@@ -1,4 +1,4 @@
-import { getApiKeys, setApiKeys } from './utils.js';
+import { getApiKeys, setApiKeys, bindModalDialogDismiss, closeTopLayer } from './utils.js';
 
 export class SettingsPanel {
   constructor() {
@@ -15,11 +15,11 @@ export class SettingsPanel {
     // Save button
     this.dialog?.querySelector('.settings__save')?.addEventListener('click', () => this.save());
 
-    // Clear buttons (dustbin icons)
+    // Clear buttons (two-click inline confirmation — non-blocking)
     this.dialog?.querySelectorAll('.settings__clear-key').forEach(btn => {
       btn.addEventListener('click', () => {
         const targetId = btn.getAttribute('data-target');
-        this.clearKey(targetId);
+        this.clearKey(targetId, btn);
       });
     });
     
@@ -31,6 +31,7 @@ export class SettingsPanel {
           const isPassword = input.type === 'password';
           input.type = isPassword ? 'text' : 'password';
           btn.textContent = isPassword ? '🙈' : '👁️';
+          btn.setAttribute('aria-pressed', String(isPassword));
         }
       });
     });
@@ -38,17 +39,11 @@ export class SettingsPanel {
     // Provider selector — show/hide relevant API key fields
     const providerSelect = this.dialog?.querySelector('#api-provider');
     providerSelect?.addEventListener('change', () => this._updateProviderFields());
-    
-    // Close on backdrop click
-    this.dialog?.addEventListener('click', (e) => {
-      if (e.target === this.dialog) this.close();
-    });
-    
-    // Close on Escape
-    this.dialog?.addEventListener('cancel', (e) => {
-      e.preventDefault();
-      this.close();
-    });
+
+    // Bind modern modal dismiss, Esc transition, and returnValue cleanup
+    if (this.dialog) {
+      bindModalDialogDismiss(this.dialog);
+    }
   }
 
   _updateProviderFields() {
@@ -62,22 +57,31 @@ export class SettingsPanel {
     if (openaiGroup) openaiGroup.style.display = provider === 'openai' ? '' : 'none';
   }
 
-  clearKey(targetId) {
+  clearKey(targetId, btn) {
     const input = this.dialog?.querySelector(`#${targetId}`);
-    if (input && input.value) {
-      const names = {
-        'gemini-key': 'Gemini API Key',
-        'openai-key': 'OpenAI API Key',
-        'weather-key': 'OpenWeather API Key',
-        'unsplash-key': 'Unsplash Access Key'
-      };
-      const fieldName = names[targetId] || 'API Key';
-                      
-      if (confirm(`Are you sure you want to delete the saved ${fieldName}?`)) {
-        input.value = '';
-        this._saveKeys();
-      }
+    if (!input || !input.value) return;
+
+    if (btn && btn.dataset.confirming !== 'true') {
+      btn.dataset.confirming = 'true';
+      btn.textContent = 'Confirm';
+      btn.classList.add('settings__clear-key--confirm');
+      clearTimeout(btn._confirmTimer);
+      btn._confirmTimer = setTimeout(() => {
+        btn.dataset.confirming = 'false';
+        btn.textContent = '🗑️';
+        btn.classList.remove('settings__clear-key--confirm');
+      }, 3000);
+      return;
     }
+
+    if (btn) {
+      clearTimeout(btn._confirmTimer);
+      btn.dataset.confirming = 'false';
+      btn.textContent = '🗑️';
+      btn.classList.remove('settings__clear-key--confirm');
+    }
+    input.value = '';
+    this._saveKeys();
   }
 
   /** Shared save logic used by both save() and clearKey() */
@@ -134,7 +138,7 @@ export class SettingsPanel {
   }
   
   close() {
-    this.dialog?.close();
+    if (this.dialog) closeTopLayer(this.dialog);
   }
   
   // Check if minimum required keys are set for the selected provider

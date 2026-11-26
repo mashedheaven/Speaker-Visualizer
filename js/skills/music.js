@@ -17,7 +17,7 @@ export const MusicSkill = {
   },
 
   async execute(intent) {
-    const rawQuery = intent.params?.track || intent.params?.query || intent.query?.replace(/play|music|song|listen to/gi, '').trim() || 'AC/DC Back in Black';
+    const rawQuery = intent.params?.track || intent.params?.query || intent.query?.replace(/\b(?:play|listen to|music|song|track)\b/gi, '').trim() || 'AC/DC Back in Black';
     const query = rawQuery.length > 1 ? rawQuery : 'Back in Black';
 
     const cacheKey = `music:${query.toLowerCase()}`;

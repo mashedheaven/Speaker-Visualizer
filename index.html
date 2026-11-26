@@ -3,12 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Speaker Visualizer - Real-time voice-to-visualization dashboard that transforms your speech into dynamic visual tiles">
+  <meta name="description" content="JARVIS Mark 85 — Voice-to-visualization holographic HUD assistant">
   <meta name="theme-color" content="#0a0e1a">
-  <title>Speaker Visualizer — Voice to Vision</title>
-  
-  <!-- Google Fonts: JetBrains Mono & Inter loaded via CSS @import -->
-  
+  <title>JARVIS — Speaker Visualizer</title>
+
   <!-- CSS -->
   <link rel="stylesheet" href="css/variables.css">
   <link rel="stylesheet" href="css/base.css">
@@ -16,7 +14,7 @@
   <link rel="stylesheet" href="css/components.css">
   <link rel="stylesheet" href="css/animations.css">
   <link rel="stylesheet" href="css/extra.css">
-  
+
   <!-- JS -->
   <script type="module" src="js/app.js"></script>
 </head>
@@ -28,12 +26,10 @@
     <!-- Header -->
     <header class="header">
       <div class="header__logo">
-        <svg class="header__icon" width="28" height="28" viewBox="0 0 28 28" fill="none">
-          <!-- A stylized microphone/waveform icon -->
-          <circle cx="14" cy="14" r="13" stroke="url(#grad)" stroke-width="2" fill="none" opacity="0.3"/>
-          <rect x="12" y="6" width="4" height="10" rx="2" fill="url(#grad)"/>
-          <path d="M9 14a5 5 0 0 0 10 0" stroke="url(#grad)" stroke-width="2" fill="none" stroke-linecap="round"/>
-          <line x1="14" y1="21" x2="14" y2="24" stroke="url(#grad)" stroke-width="2" stroke-linecap="round"/>
+        <svg class="header__icon" width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+          <circle cx="14" cy="14" r="12" stroke="url(#grad)" stroke-width="1.8" fill="none" opacity="0.45"/>
+          <circle cx="14" cy="14" r="6" stroke="url(#grad)" stroke-width="1.6" fill="none"/>
+          <circle cx="14" cy="14" r="2.2" fill="url(#grad)"/>
           <defs>
             <linearGradient id="grad" x1="0" y1="0" x2="28" y2="28">
               <stop offset="0%" stop-color="#00d4ff"/>
@@ -41,168 +37,186 @@
             </linearGradient>
           </defs>
         </svg>
-        <h1 class="header__title">JARVIS <span style="font-size:0.6em;color:var(--accent-cyan);letter-spacing:0.18em;opacity:0.85">MARK 85</span></h1>
+        <h1 class="header__title">JARVIS <span class="header__badge">MARK 85</span></h1>
       </div>
       <div class="header__controls">
-        <button id="menu-btn" class="btn btn--ghost btn--sm" aria-label="Toggle menu">
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <button type="button" id="menu-btn" class="btn btn--ghost btn--sm" aria-label="Toggle sidebar menu">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
             <path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
           </svg>
         </button>
+        <span id="hud-module-count" class="hud-chip" aria-label="Active HUD modules">0 MODULES</span>
+        <button type="button" id="stop-speech-btn" class="btn btn--danger btn--sm" hidden aria-label="Stop JARVIS speech output">⏹ Mute Voice</button>
         <div class="header__status">
-          <span id="status-dot" class="status-dot status-dot--inactive"></span>
+          <span id="status-dot" class="status-dot status-dot--inactive" aria-hidden="true"></span>
           <span id="status-text" class="header__status-text">Ready</span>
         </div>
-        <button id="mic-btn" class="mic-btn" title="Toggle microphone (Space)" aria-label="Toggle microphone">
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <button type="button" id="mic-btn" class="mic-btn" title="Toggle microphone (Space)" aria-label="Toggle microphone">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
             <rect x="7" y="2" width="6" height="10" rx="3" fill="currentColor"/>
             <path d="M5 10a5 5 0 0 0 10 0" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/>
             <line x1="10" y1="16" x2="10" y2="18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
           </svg>
         </button>
-        <button id="settings-btn" class="btn btn--ghost" title="Settings" aria-label="Open settings">
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+        <button type="button" id="settings-btn" class="btn btn--ghost" title="Settings" aria-label="Open settings">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
             <circle cx="9" cy="9" r="2.5" stroke="currentColor" stroke-width="1.5" fill="none"/>
             <path d="M9 1v2M9 15v2M1 9h2M15 9h2M3.3 3.3l1.4 1.4M13.3 13.3l1.4 1.4M3.3 14.7l1.4-1.4M13.3 4.7l1.4-1.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
           </svg>
         </button>
       </div>
     </header>
-    
+
     <!-- Sidebar -->
-    <aside class="sidebar">
+    <aside class="sidebar" aria-label="HUD Controls and Skills">
       <div class="sidebar__section">
-        <h2 class="sidebar__section-title">Skills</h2>
-        <div class="sidebar__item" data-skill="weather">
-          <span>🌤️</span> <span>Weather</span>
-        </div>
-        <div class="sidebar__item" data-skill="place">
-          <span>🏛️</span> <span>Places &amp; Landmarks</span>
-        </div>
-        <div class="sidebar__item" data-skill="fact">
-          <span>📚</span> <span>Facts &amp; Explanations</span>
-        </div>
-        <div class="sidebar__item" data-skill="brainstorm">
-          <span>💡</span> <span>Brainstorm Ideas</span>
-        </div>
-        <div class="sidebar__item" data-skill="timer">
-          <span>⏱️</span> <span>Timer &amp; Countdown</span>
-        </div>
-        <div class="sidebar__item" data-skill="system">
-          <span>🔧</span> <span>System Telemetry</span>
-        </div>
-        <div class="sidebar__item" data-skill="finance">
-          <span>📈</span> <span>Market &amp; Crypto</span>
-        </div>
-        <div class="sidebar__item" data-skill="news">
-          <span>🗞️</span> <span>Intelligence Wire</span>
-        </div>
-        <div class="sidebar__item" data-skill="calculator">
-          <span>🧮</span> <span>Calculator &amp; Math</span>
-        </div>
-        <div class="sidebar__item" data-skill="music">
-          <span>🎵</span> <span>Sonic Playback</span>
-        </div>
-        <div class="sidebar__item" data-skill="calendar">
-          <span>📅</span> <span>Strategic Agenda</span>
-        </div>
-        <div class="sidebar__item" data-skill="websearch">
-          <span>🌐</span> <span>Global Web Search</span>
-        </div>
-        <div class="sidebar__item" data-skill="imagesearch">
-          <span>🖼️</span> <span>Visual Gallery</span>
-        </div>
+        <h2 class="sidebar__section-title">Arsenal Skills</h2>
+        <button type="button" class="sidebar__item" data-skill="weather">
+          <span aria-hidden="true">🌤️</span> <span>Weather</span>
+        </button>
+        <button type="button" class="sidebar__item" data-skill="place">
+          <span aria-hidden="true">🏛️</span> <span>Places &amp; Landmarks</span>
+        </button>
+        <button type="button" class="sidebar__item" data-skill="fact">
+          <span aria-hidden="true">📚</span> <span>Facts &amp; Explanations</span>
+        </button>
+        <button type="button" class="sidebar__item" data-skill="brainstorm">
+          <span aria-hidden="true">💡</span> <span>Brainstorm Ideas</span>
+        </button>
+        <button type="button" class="sidebar__item" data-skill="timer">
+          <span aria-hidden="true">⏱️</span> <span>Timer &amp; Countdown</span>
+        </button>
+        <button type="button" class="sidebar__item" data-skill="system">
+          <span aria-hidden="true">🔧</span> <span>System Telemetry</span>
+        </button>
+        <button type="button" class="sidebar__item" data-skill="finance">
+          <span aria-hidden="true">📈</span> <span>Market &amp; Crypto</span>
+        </button>
+        <button type="button" class="sidebar__item" data-skill="news">
+          <span aria-hidden="true">🗞️</span> <span>Intelligence Wire</span>
+        </button>
+        <button type="button" class="sidebar__item" data-skill="calculator">
+          <span aria-hidden="true">🧮</span> <span>Calculator &amp; Math</span>
+        </button>
+        <button type="button" class="sidebar__item" data-skill="music">
+          <span aria-hidden="true">🎵</span> <span>Sonic Playback</span>
+        </button>
+        <button type="button" class="sidebar__item" data-skill="calendar">
+          <span aria-hidden="true">📅</span> <span>Strategic Agenda</span>
+        </button>
+        <button type="button" class="sidebar__item" data-skill="websearch">
+          <span aria-hidden="true">🌐</span> <span>Global Web Search</span>
+        </button>
+        <button type="button" class="sidebar__item" data-skill="imagesearch">
+          <span aria-hidden="true">🖼️</span> <span>Visual Gallery</span>
+        </button>
       </div>
-      
+
       <div class="sidebar__section">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-2)">
-          <h2 class="sidebar__section-title" style="margin-bottom:0">History</h2>
-          <button id="clear-btn" class="btn btn--ghost btn--sm" title="Clear all tiles">Clear</button>
+        <div class="sidebar__history-header">
+          <h2 class="sidebar__section-title">History</h2>
+          <button type="button" id="clear-btn" class="btn btn--ghost btn--sm" title="Clear unpinned tiles and history">Clear</button>
         </div>
-        <input type="text" id="history-search" class="sidebar__search" placeholder="Filter history &amp; tiles..." />
+        <input type="search" id="history-search" class="sidebar__search" placeholder="Filter history &amp; tiles..." aria-label="Filter history and visible tiles" />
         <div id="history-list" class="sidebar__history">
           <!-- History items populated by JS -->
         </div>
       </div>
-      
+
       <div class="sidebar__footer">
-        <p class="sidebar__hint">Press <kbd>Space</kbd> to toggle mic</p>
+        <p class="sidebar__hint"><kbd>Space</kbd> voice • <kbd>Esc</kbd> collapse</p>
       </div>
     </aside>
-    
+
     <!-- Main Dashboard Grid -->
     <main class="main-grid" id="main-grid">
-      <!-- Empty state -->
+      <!-- Non-blocking API Key Status Ribbon (shown when no AI key configured) -->
+      <div id="setup-prompt" class="setup-banner" role="region" aria-label="API Key Configuration" hidden>
+        <div class="setup-banner__text">
+          <span aria-hidden="true">🔑</span>
+          <span><strong>Voice STT &amp; AI answers need a Gemini or OpenAI key.</strong> Offline telemetry (Timer, Calculator, System, Markets, Agenda, Places &amp; Search) works immediately.</span>
+        </div>
+        <button type="button" id="setup-open-settings" class="btn btn--primary btn--sm">Configure Key</button>
+      </div>
+
+      <!-- Empty state featuring interactive Hero Arc Reactor -->
       <div id="empty-state" class="empty-state">
-        <div class="empty-state__icon">
-          <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
-            <circle cx="32" cy="32" r="30" stroke="var(--text-faint)" stroke-width="2" stroke-dasharray="4 4" fill="none"/>
-            <rect x="26" y="16" width="12" height="22" rx="6" fill="none" stroke="var(--text-muted)" stroke-width="2"/>
-            <path d="M20 32a12 12 0 0 0 24 0" stroke="var(--text-muted)" stroke-width="2" fill="none" stroke-linecap="round"/>
-            <line x1="32" y1="46" x2="32" y2="52" stroke="var(--text-muted)" stroke-width="2" stroke-linecap="round"/>
-          </svg>
-        </div>
-        <h2 class="empty-state__title">JARVIS is Standing By</h2>
-        <p class="empty-state__subtitle">Click the Arc Reactor or press Space to speak. Try saying things like:</p>
+        <button type="button" id="hero-reactor-btn" class="hero-reactor-btn" title="Activate JARVIS Voice Interface (Space)" aria-label="Activate JARVIS Voice Interface">
+          <canvas id="hero-reactor-canvas" class="hero-reactor__canvas" width="220" height="220"></canvas>
+          <span id="hero-reactor-state" class="hero-reactor__state">ARC CORE • STANDBY</span>
+        </button>
+        <h2 class="empty-state__title">JARVIS Is Standing By, Sir</h2>
+        <p class="empty-state__subtitle">Speak with the Arc Reactor core, press <kbd>Space</kbd>, or launch a quick HUD telemetry card below:</p>
         <div class="empty-state__examples">
-          <span class="empty-state__example">"Jarvis, what's the weather in Tokyo?"</span>
-          <span class="empty-state__example">"Jarvis, set a timer for 1 minute"</span>
-          <span class="empty-state__example">"Jarvis, price of Bitcoin"</span>
-          <span class="empty-state__example">"Jarvis, hardware diagnostics"</span>
-          <span class="empty-state__example">"Jarvis, latest tech news"</span>
-          <span class="empty-state__example">"Jarvis, explain quantum computing"</span>
-          <span class="empty-state__example">"Jarvis, calculate 15% of 350"</span>
-          <span class="empty-state__example">"Jarvis, play AC/DC Back in Black"</span>
-          <span class="empty-state__example">"Jarvis, show my schedule"</span>
-          <span class="empty-state__example">"Jarvis, status report"</span>
+          <button type="button" class="empty-state__example">"Jarvis, hardware diagnostics"</button>
+          <button type="button" class="empty-state__example">"Jarvis, set a timer for 1 minute"</button>
+          <button type="button" class="empty-state__example">"Jarvis, price of Bitcoin"</button>
+          <button type="button" class="empty-state__example">"Jarvis, calculate 15% of 350"</button>
+          <button type="button" class="empty-state__example">"Jarvis, tell me about Eiffel Tower"</button>
+          <button type="button" class="empty-state__example">"Jarvis, show my schedule"</button>
+          <button type="button" class="empty-state__example">"Jarvis, play AC/DC Back in Black"</button>
+          <button type="button" class="empty-state__example">"Jarvis, show me pictures of Mars"</button>
+          <button type="button" class="empty-state__example">"Jarvis, what's the weather in Tokyo?"</button>
+          <button type="button" class="empty-state__example">"Jarvis, what is this?"</button>
         </div>
       </div>
-      
-      <!-- Setup prompt (shown when no API keys) -->
-      <div id="setup-prompt" class="setup-prompt" style="display:none">
-        <div class="setup-prompt__card">
-          <span class="setup-prompt__icon">🔑</span>
-          <h2 class="setup-prompt__title">API Keys Required</h2>
-          <p class="setup-prompt__text">To get started, you'll need to add your API keys in Settings.</p>
-          <button id="setup-open-settings" class="btn btn--primary">Open Settings</button>
-        </div>
-      </div>
-      
+
       <!-- Tile overlay for expanded tiles -->
       <div id="tile-overlay" class="tile-overlay"></div>
     </main>
-    
-    <!-- Transcript Strip -->
+
+    <!-- Bottom HUD Command Deck & Live Speaker Visualization -->
     <footer class="transcript-strip">
-      <canvas id="waveform-canvas" class="transcript__waveform" width="240" height="96"></canvas>
-      <div id="transcript-text" class="transcript__text">Ready — click the mic to start listening</div>
+      <button type="button" id="console-reactor-btn" class="console-reactor-btn" title="Toggle Voice (Space)" aria-label="Toggle voice listening">
+        <canvas id="waveform-canvas" class="transcript__waveform" width="144" height="144"></canvas>
+      </button>
+      <div class="transcript__console">
+        <div id="transcript-text" class="transcript__text" aria-live="polite">Ready — speak or enter a JARVIS command</div>
+        <form id="hud-command-form" class="hud-command-form">
+          <input
+            type="text"
+            id="hud-command-input"
+            class="hud-command-input"
+            placeholder='Command JARVIS… (e.g. "Oh Jarvis, what is this?", "Price of Bitcoin", "Clear screen")'
+            aria-label="Command JARVIS"
+            autocomplete="off"
+          />
+          <button type="submit" class="btn btn--primary btn--sm">Send ↵</button>
+        </form>
+      </div>
     </footer>
   </div>
-  
+
+  <!-- Notification Stack & Accessible Live Region -->
+  <div id="toast-region" class="toast-region" role="region" aria-label="Notifications"></div>
+  <p class="visually-hidden">Screen reader announcements</p>
+  <div id="toast-announcer" class="visually-hidden" aria-live="polite"></div>
+
   <!-- Settings Dialog -->
-  <dialog id="settings-dialog" class="settings-dialog">
+  <dialog id="settings-dialog" class="settings-dialog" aria-labelledby="settings-title" closedby="any">
     <div class="settings__header">
-      <h2 class="settings__title">Settings</h2>
-      <button class="settings__close btn btn--ghost" aria-label="Close settings">✕</button>
+      <h1 id="settings-title" class="settings__title">HUD Settings</h1>
+      <button type="button" class="settings__close btn btn--ghost" aria-label="Close settings">✕</button>
     </div>
     <div class="settings__body">
       <div class="settings__group">
-        <label class="settings__label" for="api-provider">Speech & AI Provider</label>
-        <select id="api-provider" class="settings__input">
+        <label class="settings__label" for="api-provider">Speech &amp; AI Provider</label>
+        <select id="api-provider" class="settings__input" autofocus>
           <option value="gemini">Google Gemini (Default)</option>
           <option value="openai">OpenAI (Whisper + GPT)</option>
         </select>
       </div>
-      
+
       <div id="gemini-group" class="settings__group">
-        <label class="settings__label" for="gemini-key">Gemini API Key <span style="color:var(--accent-pink)">*required</span></label>
-        <div class="settings__input-wrapper" style="gap: var(--space-2)">
+        <label class="settings__label" for="gemini-key">Gemini API Key <span style="color:var(--accent-pink)">*required for voice &amp; AI</span></label>
+        <div class="settings__input-wrapper">
           <input type="password" id="gemini-key" class="settings__input" placeholder="Enter your Gemini API key">
-          <button class="settings__toggle-vis btn btn--ghost btn--sm" title="Toggle visibility">👁️</button>
-          <button class="settings__clear-key btn btn--ghost btn--sm" data-target="gemini-key" title="Clear key">🗑️</button>
+          <button type="button" class="settings__toggle-vis btn btn--ghost btn--sm" title="Toggle visibility" aria-label="Toggle Gemini key visibility" aria-pressed="false">👁️</button>
+          <button type="button" class="settings__clear-key btn btn--ghost btn--sm" data-target="gemini-key" title="Clear key" aria-label="Clear Gemini key">🗑️</button>
         </div>
-        <small style="color:var(--text-muted);font-size:var(--text-xs)">Get a free key at <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--accent-cyan)">aistudio.google.com</a></small>
+        <small class="settings__help">Get a free key at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">aistudio.google.com</a></small>
       </div>
+
       <div id="gemini-model-group" class="settings__group">
         <label class="settings__label" for="gemini-model">Gemini Model</label>
         <select id="gemini-model" class="settings__input">
@@ -213,36 +227,37 @@
       </div>
 
       <div id="openai-group" class="settings__group" style="display:none">
-        <label class="settings__label" for="openai-key">OpenAI API Key <span style="color:var(--accent-pink)">*required</span></label>
-        <div class="settings__input-wrapper" style="gap: var(--space-2)">
+        <label class="settings__label" for="openai-key">OpenAI API Key <span style="color:var(--accent-pink)">*required for Whisper STT</span></label>
+        <div class="settings__input-wrapper">
           <input type="password" id="openai-key" class="settings__input" placeholder="Enter your OpenAI API key (sk-...)">
-          <button class="settings__toggle-vis btn btn--ghost btn--sm" title="Toggle visibility">👁️</button>
-          <button class="settings__clear-key btn btn--ghost btn--sm" data-target="openai-key" title="Clear key">🗑️</button>
+          <button type="button" class="settings__toggle-vis btn btn--ghost btn--sm" title="Toggle visibility" aria-label="Toggle OpenAI key visibility" aria-pressed="false">👁️</button>
+          <button type="button" class="settings__clear-key btn btn--ghost btn--sm" data-target="openai-key" title="Clear key" aria-label="Clear OpenAI key">🗑️</button>
         </div>
-        <small style="color:var(--text-muted);font-size:var(--text-xs)">Uses Whisper-1 for STT</small>
+        <small class="settings__help">Uses Whisper-1 for STT</small>
       </div>
 
       <div class="settings__group">
         <label class="settings__label" for="weather-key">OpenWeather API Key</label>
-        <div class="settings__input-wrapper" style="gap: var(--space-2)">
+        <div class="settings__input-wrapper">
           <input type="password" id="weather-key" class="settings__input" placeholder="Enter your OpenWeather API key">
-          <button class="settings__toggle-vis btn btn--ghost btn--sm" title="Toggle visibility">👁️</button>
-          <button class="settings__clear-key btn btn--ghost btn--sm" data-target="weather-key" title="Clear key">🗑️</button>
+          <button type="button" class="settings__toggle-vis btn btn--ghost btn--sm" title="Toggle visibility" aria-label="Toggle OpenWeather key visibility" aria-pressed="false">👁️</button>
+          <button type="button" class="settings__clear-key btn btn--ghost btn--sm" data-target="weather-key" title="Clear key" aria-label="Clear OpenWeather key">🗑️</button>
         </div>
-        <small style="color:var(--text-muted);font-size:var(--text-xs)">Free at <a href="https://openweathermap.org/api" target="_blank" style="color:var(--accent-cyan)">openweathermap.org</a></small>
-      </div>
-      <div class="settings__group">
-        <label class="settings__label" for="unsplash-key">Unsplash Access Key <span style="color:var(--text-muted)">(optional)</span></label>
-        <div class="settings__input-wrapper" style="gap: var(--space-2)">
-          <input type="password" id="unsplash-key" class="settings__input" placeholder="Enter your Unsplash access key">
-          <button class="settings__toggle-vis btn btn--ghost btn--sm" title="Toggle visibility">👁️</button>
-          <button class="settings__clear-key btn btn--ghost btn--sm" data-target="unsplash-key" title="Clear key">🗑️</button>
-        </div>
-        <small style="color:var(--text-muted);font-size:var(--text-xs)">Falls back to Wikipedia images if not set</small>
+        <small class="settings__help">Free at <a href="https://openweathermap.org/api" target="_blank" rel="noopener noreferrer">openweathermap.org</a></small>
       </div>
 
-      <div class="settings__divider" style="height:1px;background:var(--glass-border);margin:var(--space-2) 0"></div>
-      <div class="settings__section-title" style="font-size:var(--text-xs);text-transform:uppercase;letter-spacing:0.1em;color:var(--accent-cyan);font-weight:600">JARVIS Audio Persona</div>
+      <div class="settings__group">
+        <label class="settings__label" for="unsplash-key">Unsplash Access Key <span style="color:var(--text-muted)">(optional)</span></label>
+        <div class="settings__input-wrapper">
+          <input type="password" id="unsplash-key" class="settings__input" placeholder="Enter your Unsplash access key">
+          <button type="button" class="settings__toggle-vis btn btn--ghost btn--sm" title="Toggle visibility" aria-label="Toggle Unsplash key visibility" aria-pressed="false">👁️</button>
+          <button type="button" class="settings__clear-key btn btn--ghost btn--sm" data-target="unsplash-key" title="Clear key" aria-label="Clear Unsplash key">🗑️</button>
+        </div>
+        <small class="settings__help">Falls back to Wikimedia images if not set</small>
+      </div>
+
+      <div class="settings__divider"></div>
+      <div class="settings__section-title">JARVIS Audio Persona</div>
 
       <div class="settings__group">
         <label class="settings__label" for="jarvis-voice-toggle">Voice Output (TTS)</label>
@@ -261,8 +276,8 @@
       </div>
     </div>
     <div class="settings__footer">
-      <button class="settings__close btn btn--secondary">Cancel</button>
-      <button class="settings__save btn btn--primary">Save Keys</button>
+      <button type="button" class="settings__close btn btn--secondary">Cancel</button>
+      <button type="button" class="settings__save btn btn--primary">Save Keys</button>
     </div>
   </dialog>
 </body>

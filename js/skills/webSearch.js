@@ -16,7 +16,7 @@ export const WebSearchSkill = {
   },
 
   async execute(intent) {
-    const rawQuery = intent.params?.query || intent.query?.replace(/search for|search|lookup|google/gi, '').trim() || 'Artificial Intelligence';
+    const rawQuery = intent.params?.query || intent.query?.replace(/\b(?:search the web for|search for|search|lookup|google)\b/gi, '').trim() || 'Artificial Intelligence';
     const query = rawQuery.length > 1 ? rawQuery : 'Artificial Intelligence';
 
     const cacheKey = `search:${query.toLowerCase()}`;
@@ -40,15 +40,23 @@ export const WebSearchSkill = {
         }
 
         if (json.RelatedTopics && Array.isArray(json.RelatedTopics)) {
-          json.RelatedTopics.slice(0, 3).forEach(topic => {
+          const flatTopics = [];
+          for (const topic of json.RelatedTopics) {
             if (topic.Text && topic.FirstURL) {
-              results.push({
-                title: topic.Text.split(' - ')[0] || 'Reference',
-                snippet: topic.Text,
-                url: topic.FirstURL,
-                source: 'Web Index'
-              });
+              flatTopics.push(topic);
+            } else if (Array.isArray(topic.Topics)) {
+              for (const sub of topic.Topics) {
+                if (sub.Text && sub.FirstURL) flatTopics.push(sub);
+              }
             }
+          }
+          flatTopics.slice(0, 4 - results.length).forEach(topic => {
+            results.push({
+              title: topic.Text.split(' - ')[0] || 'Reference',
+              snippet: topic.Text,
+              url: topic.FirstURL,
+              source: 'Web Index'
+            });
           });
         }
 
@@ -67,15 +75,15 @@ export const WebSearchSkill = {
       query,
       results: [
         {
-          title: `${query} — Primary Overview`,
+          title: `${query} — Wikipedia Reference`,
           snippet: `Comprehensive technical intelligence and documented references regarding ${query}.`,
-          url: `https://en.wikipedia.org/wiki/${encodeURIComponent(query)}`,
+          url: `https://en.wikipedia.org/w/index.php?search=${encodeURIComponent(query)}`,
           source: 'Wikipedia'
         },
         {
-          title: `${query} Research Archive`,
+          title: `${query} — Research Papers (arXiv)`,
           snippet: `Current trends, research citations, and technical publications for ${query}.`,
-          url: `https://arxiv.org/abs/${encodeURIComponent(query)}`,
+          url: `https://arxiv.org/search/?query=${encodeURIComponent(query)}&searchtype=all`,
           source: 'Research Index'
         }
       ]
